@@ -9,17 +9,28 @@
 <body>
   <!-- Login / Cadastro -->
   <section id="auth-container" class="auth-container">
+    <img src="assets/logo-focustorm-icon.png" alt="Logo FocuStorm" class="logo-login" />
     <h2>Bem-vindo ao FocuStorm</h2>
     <div class="auth-form">
       <input type="text" id="auth-name" placeholder="Nome de usuário" />
-      <input type="password" id="auth-password" placeholder="Senha" />
+      <div class="senha-container">
+        <input type="password" id="auth-password" placeholder="Senha" />
+        <button type="button" id="toggleSenha">👁️</button>
+      </div>
       <button id="login-btn">Entrar</button>
       <button id="register-btn">Cadastrar</button>
     </div>
   </section>
 
-  <!-- Aplicativo Pomodoro -->
-  <main id="app-container" class="container" style="display: none;">
+  <!-- MENU DE NAVEGAÇÃO -->
+  <nav id="menu-topo" class="menu-topo" style="display: none;">
+    <button class="nav-btn active" data-section="pomodoro">Pomodoro</button>
+    <button class="nav-btn" data-section="historico">Histórico</button>
+    <button class="nav-btn" data-section="ranking">Ranking</button>
+  </nav>
+
+  <!-- SEÇÃO: Pomodoro -->
+  <section id="section-pomodoro" class="container" style="display: none;">
     <div class="logout-area">
       <span id="usuario-logado"></span>
       <button id="logout-btn">Sair</button>
@@ -28,14 +39,8 @@
     <h1>FocuStorm</h1>
 
     <div class="timer-settings">
-      <label>
-        Tempo de foco (min):
-        <input type="number" id="focus-time" value="25" />
-      </label>
-      <label>
-        Tempo de pausa (min):
-        <input type="number" id="break-time" value="5" />
-      </label>
+      <label>Tempo de foco (min): <input type="number" id="focus-time" value="25" /></label>
+      <label>Tempo de pausa (min): <input type="number" id="break-time" value="5" /></label>
     </div>
 
     <div class="timer-display" id="timer-display">25:00</div>
@@ -45,30 +50,47 @@
       <button id="pause-btn">Pausar</button>
       <button id="reset-btn">Resetar</button>
     </div>
-  </main>
-
-  <!-- Histórico -->
-  <section id="history-section" class="history-container" style="display: none;">
-    <h2>Histórico</h2>
-    <div class="history-filters">
-      <button data-filter="mes">Este mês</button>
-      <button data-filter="3meses">Últimos 3 meses</button>
-      <button data-filter="todos">Todo o tempo</button>
-      <button data-filter="personalizado">Personalizado</button>
-      <input type="date" id="data-inicio" />
-      <input type="date" id="data-fim" />
-    </div>
-    <ul id="lista-historico"></ul>
   </section>
 
-  <!-- Ranking -->
-  <section id="ranking-section" class="ranking-container" style="display: none;">
+  <!-- SEÇÃO: Histórico -->
+  <section id="section-historico" class="container" style="display: none;">
+    <h2>Histórico</h2>
+    <div class="history-tabs">
+      <button class="history-tab active" data-tab="summary">Resumo</button>
+      <button class="history-tab" data-tab="details">Detalhado</button>
+    </div>
+
+    <div id="history-summary" class="history-tab-content">
+      <div class="summary-cards">
+        <div class="card"><strong id="total-focus">0</strong><span>Horas focadas</span></div>
+        <div class="card"><strong id="days-active">0</strong><span>Dias ativos</span></div>
+        <div class="card"><strong id="streak-days">0</strong><span>Sequência (dias)</span></div>
+      </div>
+      <div class="graph-container">
+        <canvas id="focus-graph"></canvas>
+      </div>
+    </div>
+
+    <div id="history-details" class="history-tab-content" style="display: none;">
+      <div class="filter-container">
+        <label>De: <input type="date" id="data-inicio" /></label>
+        <label>Até: <input type="date" id="data-fim" /></label>
+        <button id="btn-filtrar-historico">Filtrar</button>
+      </div>
+
+      <ul id="lista-historico" class="lista-historico"></ul>
+    </div>
+  </section>
+
+  <!-- SEÇÃO: Ranking -->
+  <section id="section-ranking" class="container" style="display: none;">
     <h2>Ranking</h2>
     <ul id="ranking-list"></ul>
   </section>
 
-  <!-- Scripts no final para garantir ordem -->
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

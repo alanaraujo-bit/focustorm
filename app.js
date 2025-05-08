@@ -1,38 +1,46 @@
 // ====== CONEXÃO COM SUPABASE ======
 const supabaseUrl = 'https://tjocgefyjgyndzahcwwd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqb2NnZWZ5amd5bmR6YWhjd3dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NjExMzgsImV4cCI6MjA2MjIzNzEzOH0.xQxMpAXNbwzrc03WToTCOGv_6v1OSEvdSVwzPEzQGr0'; // sua chave aqui
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqb2NnZWZ5amd5bmR6YWhjd3dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NjExMzgsImV4cCI6MjA2MjIzNzEzOH0.xQxMpAXNbwzrc03WToTCOGv_6v1OSEvdSVwzPEzQGr0'; // sua chave
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// ====== AUTENTICAÇÃO ======
+// ====== ELEMENTOS DE DOM ======
 const authContainer = document.getElementById('auth-container');
-const appContainer = document.getElementById('app-container');
-const historySection = document.getElementById('history-section');
-const rankingSection = document.getElementById('ranking-section');
-
 const loginBtn = document.getElementById('login-btn');
 const registerBtn = document.getElementById('register-btn');
 const inputName = document.getElementById('auth-name');
 const inputPassword = document.getElementById('auth-password');
 const logoutBtn = document.getElementById('logout-btn');
 const usuarioNomeSpan = document.getElementById('usuario-logado');
+const timerDisplay = document.getElementById('timer-display');
+const focusInput = document.getElementById('focus-time');
+const breakInput = document.getElementById('break-time');
+const startBtn = document.getElementById('start-btn');
+const pauseBtn = document.getElementById('pause-btn');
+const resetBtn = document.getElementById('reset-btn');
+const listaHistorico = document.getElementById('lista-historico');
+const dataInicio = document.getElementById('data-inicio');
+const dataFim = document.getElementById('data-fim');
+const rankingList = document.getElementById('ranking-list');
 
 let usuarioLogado = localStorage.getItem('usuarioLogado') || null;
+let timer;
+let isRunning = false;
+let isFocusTime = true;
+let remainingTime = 0;
 
+// ====== AUTENTICAÇÃO ======
 function verificarLogin() {
   if (usuarioLogado) {
     authContainer.style.display = 'none';
-    appContainer.style.display = 'block';
-    historySection.style.display = 'block';
-    rankingSection.style.display = 'block';
-    usuarioNomeSpan.textContent = `Logado como: ${usuarioLogado}`;
+    document.getElementById("menu-topo").style.display = "flex";
+    document.getElementById("section-pomodoro").style.display = "block";
+    document.getElementById("section-historico").style.display = "none";
+    document.getElementById("section-ranking").style.display = "none";
     mostrarHistorico();
     mostrarRanking();
     resetTimer();
   } else {
     authContainer.style.display = 'block';
-    appContainer.style.display = 'none';
-    historySection.style.display = 'none';
-    rankingSection.style.display = 'none';
   }
 }
 
@@ -66,27 +74,10 @@ registerBtn.addEventListener('click', () => {
 logoutBtn.addEventListener('click', () => {
   localStorage.removeItem('usuarioLogado');
   usuarioLogado = null;
-  verificarLogin();
+  location.reload();
 });
 
 // ====== CRONÔMETRO ======
-const timerDisplay = document.getElementById('timer-display');
-const focusInput = document.getElementById('focus-time');
-const breakInput = document.getElementById('break-time');
-const startBtn = document.getElementById('start-btn');
-const pauseBtn = document.getElementById('pause-btn');
-const resetBtn = document.getElementById('reset-btn');
-const listaHistorico = document.getElementById('lista-historico');
-const filtros = document.querySelectorAll('[data-filter]');
-const dataInicio = document.getElementById('data-inicio');
-const dataFim = document.getElementById('data-fim');
-const rankingList = document.getElementById('ranking-list');
-
-let timer;
-let isRunning = false;
-let isFocusTime = true;
-let remainingTime = 0;
-
 function formatTime(seconds) {
   const m = String(Math.floor(seconds / 60)).padStart(2, '0');
   const s = String(seconds % 60).padStart(2, '0');
@@ -95,22 +86,6 @@ function formatTime(seconds) {
 
 function updateDisplay() {
   timerDisplay.textContent = formatTime(remainingTime);
-}
-
-async function salvarSessao(tipo, duracao) {
-  if (!usuarioLogado) return;
-
-  const { error } = await supabase.from('sessoes').insert([
-    {
-      usuario: usuarioLogado,
-      tipo,
-      duracao,
-    },
-  ]);
-
-  if (error) {
-    console.error('Erro ao salvar no Supabase:', error);
-  }
 }
 
 function startTimer() {
@@ -157,6 +132,11 @@ function resetTimer() {
   updateDisplay();
 }
 
+async function salvarSessao(tipo, duracao) {
+  if (!usuarioLogado) return;
+  await supabase.from('sessoes').insert([{ usuario: usuarioLogado, tipo, duracao }]);
+}
+
 // ====== HISTÓRICO ======
 async function mostrarHistorico(filtro = 'todos') {
   const { data: historico, error } = await supabase
@@ -170,25 +150,13 @@ async function mostrarHistorico(filtro = 'todos') {
     return;
   }
 
-  const hoje = new Date();
   let filtrado = [...historico];
-
-  if (filtro === 'mes') {
-    filtrado = filtrado.filter(sessao => {
-      const data = new Date(sessao.created_at);
-      return data.getMonth() === hoje.getMonth() && data.getFullYear() === hoje.getFullYear();
-    });
-  }
-
-  if (filtro === '3meses') {
-    const tresMesesAtras = new Date();
-    tresMesesAtras.setMonth(hoje.getMonth() - 3);
-    filtrado = filtrado.filter(sessao => new Date(sessao.created_at) >= tresMesesAtras);
-  }
 
   if (filtro === 'personalizado') {
     const inicio = new Date(dataInicio.value);
     const fim = new Date(dataFim.value);
+    fim.setHours(23, 59, 59, 999); // inclui o dia final inteiro
+
     filtrado = filtrado.filter(sessao => {
       const data = new Date(sessao.created_at);
       return data >= inicio && data <= fim;
@@ -196,17 +164,28 @@ async function mostrarHistorico(filtro = 'todos') {
   }
 
   listaHistorico.innerHTML = '';
+
   if (filtrado.length === 0) {
     listaHistorico.innerHTML = '<li>Nenhuma sessão encontrada.</li>';
-  } else {
-    filtrado.forEach(sessao => {
-      const dataFormatada = new Date(sessao.created_at).toLocaleDateString();
-      const texto = `${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min`;
-      const li = document.createElement('li');
-      li.textContent = texto;
-      listaHistorico.appendChild(li);
-    });
+    return;
   }
+
+  filtrado.forEach(sessao => {
+    const dataFormatada = new Date(sessao.created_at).toLocaleDateString('pt-BR');
+    const item = document.createElement('li');
+    item.textContent = `${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min`;
+    listaHistorico.appendChild(item);
+  });
+
+  // === RESUMO TOTAL ===
+  const totalMinutos = filtrado.reduce((acc, sessao) => acc + sessao.duracao, 0);
+  const totalHoras = (totalMinutos / 60).toFixed(2);
+
+  const resumo = document.createElement('li');
+  resumo.style.marginTop = '1rem';
+  resumo.style.fontWeight = 'bold';
+  resumo.textContent = `Total no intervalo: ${totalMinutos} minutos (${totalHoras}h focadas)`;
+  listaHistorico.appendChild(resumo);
 }
 
 // ====== RANKING ======
@@ -227,8 +206,8 @@ async function mostrarRanking() {
   });
 
   const rankingArray = Object.entries(temposPorUsuario).sort((a, b) => b[1] - a[1]);
-
   rankingList.innerHTML = '';
+
   rankingArray.forEach(([usuario, tempo]) => {
     const li = document.createElement('li');
     li.innerHTML = `<strong>${usuario}</strong><span>${tempo} min</span>`;
@@ -240,12 +219,48 @@ async function mostrarRanking() {
 startBtn.addEventListener('click', startTimer);
 pauseBtn.addEventListener('click', pauseTimer);
 resetBtn.addEventListener('click', resetTimer);
-filtros.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tipoFiltro = btn.getAttribute('data-filter');
-    mostrarHistorico(tipoFiltro);
+document.getElementById('btn-filtrar-historico').addEventListener('click', () => {
+  mostrarHistorico('personalizado');
+});
+
+// ====== TROCA DE SEÇÕES ======
+const navButtons = document.querySelectorAll(".nav-btn");
+const sections = {
+  pomodoro: document.getElementById("section-pomodoro"),
+  historico: document.getElementById("section-historico"),
+  ranking: document.getElementById("section-ranking"),
+};
+
+navButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.section;
+    Object.keys(sections).forEach(key => {
+      sections[key].style.display = key === target ? "block" : "none";
+    });
+    navButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    if (target === "historico") mostrarHistorico();
+    if (target === "ranking") mostrarRanking();
+  });
+});
+
+// ====== TROCA DE ABAS DO HISTÓRICO ======
+const historyTabs = document.querySelectorAll('.history-tab');
+const historyContents = document.querySelectorAll('.history-tab-content');
+
+historyTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    historyTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    historyContents.forEach(content => {
+      content.style.display = 'none';
+    });
+    document.getElementById(`history-${target}`).style.display = 'block';
   });
 });
 
 // ====== INICIAR ======
-verificarLogin();
+if (usuarioLogado) {
+  verificarLogin();
+}
