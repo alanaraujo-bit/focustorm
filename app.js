@@ -1,3 +1,8 @@
+// ====== CONEXÃO COM SUPABASE ======
+const supabaseUrl = 'https://tjocgefyjgyndzahcwwd.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqb2NnZWZ5amd5bmR6YWhjd3dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NjExMzgsImV4cCI6MjA2MjIzNzEzOH0.xQxMpAXNbwzrc03WToTCOGv_6v1OSEvdSVwzPEzQGr0'; // sua chave aqui
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 // ====== AUTENTICAÇÃO ======
 const authContainer = document.getElementById('auth-container');
 const appContainer = document.getElementById('app-container');
@@ -13,7 +18,6 @@ const usuarioNomeSpan = document.getElementById('usuario-logado');
 
 let usuarioLogado = localStorage.getItem('usuarioLogado') || null;
 
-// Exibe ou oculta a interface
 function verificarLogin() {
   if (usuarioLogado) {
     authContainer.style.display = 'none';
@@ -35,8 +39,8 @@ function verificarLogin() {
 loginBtn.addEventListener('click', () => {
   const nome = inputName.value.trim();
   const senha = inputPassword.value;
-
   const usuarios = JSON.parse(localStorage.getItem('usuariosPomodoro')) || {};
+
   if (usuarios[nome] && usuarios[nome] === senha) {
     localStorage.setItem('usuarioLogado', nome);
     usuarioLogado = nome;
@@ -49,21 +53,14 @@ loginBtn.addEventListener('click', () => {
 registerBtn.addEventListener('click', () => {
   const nome = inputName.value.trim();
   const senha = inputPassword.value;
-
-  if (!nome || !senha) {
-    alert('Preencha todos os campos!');
-    return;
-  }
+  if (!nome || !senha) return alert('Preencha todos os campos!');
 
   const usuarios = JSON.parse(localStorage.getItem('usuariosPomodoro')) || {};
-  if (usuarios[nome]) {
-    alert('Usuário já existe!');
-    return;
-  }
+  if (usuarios[nome]) return alert('Usuário já existe!');
 
   usuarios[nome] = senha;
   localStorage.setItem('usuariosPomodoro', JSON.stringify(usuarios));
-  alert('Usuário cadastrado com sucesso! Faça o login.');
+  alert('Usuário cadastrado! Faça login.');
 });
 
 logoutBtn.addEventListener('click', () => {
@@ -72,7 +69,7 @@ logoutBtn.addEventListener('click', () => {
   verificarLogin();
 });
 
-// ====== CRONÔMETRO + HISTÓRICO + RANKING ======
+// ====== CRONÔMETRO ======
 const timerDisplay = document.getElementById('timer-display');
 const focusInput = document.getElementById('focus-time');
 const breakInput = document.getElementById('break-time');
@@ -90,7 +87,6 @@ let isRunning = false;
 let isFocusTime = true;
 let remainingTime = 0;
 
-// Formata o tempo para mm:ss
 function formatTime(seconds) {
   const m = String(Math.floor(seconds / 60)).padStart(2, '0');
   const s = String(seconds % 60).padStart(2, '0');
@@ -101,22 +97,22 @@ function updateDisplay() {
   timerDisplay.textContent = formatTime(remainingTime);
 }
 
-// Salva a sessão correta antes de mudar o estado
-function salvarSessao(tipo, duracao) {
-  const historico = JSON.parse(localStorage.getItem('historicoPomodoro')) || [];
+async function salvarSessao(tipo, duracao) {
+  if (!usuarioLogado) return;
 
-  const novaSessao = {
-    usuario: usuarioLogado,
-    tipo,
-    duracao,
-    data: new Date().toISOString()
-  };
+  const { error } = await supabase.from('sessoes').insert([
+    {
+      usuario: usuarioLogado,
+      tipo,
+      duracao,
+    },
+  ]);
 
-  historico.push(novaSessao);
-  localStorage.setItem('historicoPomodoro', JSON.stringify(historico));
+  if (error) {
+    console.error('Erro ao salvar no Supabase:', error);
+  }
 }
 
-// Inicia o cronômetro
 function startTimer() {
   if (isRunning) return;
 
@@ -161,16 +157,25 @@ function resetTimer() {
   updateDisplay();
 }
 
-// Histórico
-function mostrarHistorico(filtro = 'todos') {
-  const historico = JSON.parse(localStorage.getItem('historicoPomodoro')) || [];
-  const hoje = new Date();
+// ====== HISTÓRICO ======
+async function mostrarHistorico(filtro = 'todos') {
+  const { data: historico, error } = await supabase
+    .from('sessoes')
+    .select('*')
+    .eq('usuario', usuarioLogado)
+    .order('created_at', { ascending: false });
 
-  let filtrado = historico.filter(s => s.usuario === usuarioLogado);
+  if (error) {
+    console.error('Erro ao carregar histórico:', error);
+    return;
+  }
+
+  const hoje = new Date();
+  let filtrado = [...historico];
 
   if (filtro === 'mes') {
     filtrado = filtrado.filter(sessao => {
-      const data = new Date(sessao.data);
+      const data = new Date(sessao.created_at);
       return data.getMonth() === hoje.getMonth() && data.getFullYear() === hoje.getFullYear();
     });
   }
@@ -178,14 +183,14 @@ function mostrarHistorico(filtro = 'todos') {
   if (filtro === '3meses') {
     const tresMesesAtras = new Date();
     tresMesesAtras.setMonth(hoje.getMonth() - 3);
-    filtrado = filtrado.filter(sessao => new Date(sessao.data) >= tresMesesAtras);
+    filtrado = filtrado.filter(sessao => new Date(sessao.created_at) >= tresMesesAtras);
   }
 
   if (filtro === 'personalizado') {
     const inicio = new Date(dataInicio.value);
     const fim = new Date(dataFim.value);
     filtrado = filtrado.filter(sessao => {
-      const data = new Date(sessao.data);
+      const data = new Date(sessao.created_at);
       return data >= inicio && data <= fim;
     });
   }
@@ -195,7 +200,7 @@ function mostrarHistorico(filtro = 'todos') {
     listaHistorico.innerHTML = '<li>Nenhuma sessão encontrada.</li>';
   } else {
     filtrado.forEach(sessao => {
-      const dataFormatada = new Date(sessao.data).toLocaleDateString();
+      const dataFormatada = new Date(sessao.created_at).toLocaleDateString();
       const texto = `${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min`;
       const li = document.createElement('li');
       li.textContent = texto;
@@ -204,16 +209,19 @@ function mostrarHistorico(filtro = 'todos') {
   }
 }
 
-// Ranking
-function mostrarRanking() {
-  const historico = JSON.parse(localStorage.getItem('historicoPomodoro')) || [];
-  const temposPorUsuario = {};
+// ====== RANKING ======
+async function mostrarRanking() {
+  const { data: historico, error } = await supabase.from('sessoes').select('*');
 
+  if (error) {
+    console.error('Erro ao carregar ranking:', error);
+    return;
+  }
+
+  const temposPorUsuario = {};
   historico.forEach(sessao => {
     if (sessao.tipo === 'Foco') {
-      if (!temposPorUsuario[sessao.usuario]) {
-        temposPorUsuario[sessao.usuario] = 0;
-      }
+      if (!temposPorUsuario[sessao.usuario]) temposPorUsuario[sessao.usuario] = 0;
       temposPorUsuario[sessao.usuario] += sessao.duracao;
     }
   });
@@ -228,7 +236,7 @@ function mostrarRanking() {
   });
 }
 
-// Eventos
+// ====== EVENTOS ======
 startBtn.addEventListener('click', startTimer);
 pauseBtn.addEventListener('click', pauseTimer);
 resetBtn.addEventListener('click', resetTimer);
@@ -239,5 +247,5 @@ filtros.forEach(btn => {
   });
 });
 
-// Inicialização
+// ====== INICIAR ======
 verificarLogin();
