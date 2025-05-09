@@ -31,6 +31,22 @@ let isFocusTime = true;
 let remainingTime = 0;
 let tipoGraficoAtual = 'bar';
 
+async function registrarNomeUsuario() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: existente, error: erroBusca } = await supabase
+    .from('usuarios')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (!existente) {
+    const nome = user.user_metadata?.full_name || user.email || "Usuário";
+    await supabase.from('usuarios').insert([{ id: user.id, name: nome }]);
+  }
+}
+
 // ====== FUNÇÕES PRINCIPAIS ======
 async function verificarLogin() {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -154,19 +170,19 @@ async function salvarSessao(tipo, duracao) {
     return;
   }
 
-  const { error } = await supabase.from("sessoes1").insert([
+  const { error } = await supabase.from('sessoes1').insert([
     {
       usuario_id: user.id,
-      duracao: duracao,
-      tipo: tipo, // 👈 isso aqui é ESSENCIAL
-      data: new Date()
+      duracao: duracao, // transforma de minutos para segundos
+      data: new Date().toISOString(),
+      tipo: tipo
     }
   ]);
 
   if (error) {
-    console.error("❌ Erro ao salvar sessão:", error.message);
+    console.error('Erro ao salvar sessão:', error);
   } else {
-    console.log("✅ Sessão salva com sucesso no Supabase!");
+    console.log('✅ Sessão salva com sucesso!');
   }
 }
 
@@ -231,7 +247,7 @@ function renderizarGraficoFoco(dados, labels) {
     data: {
       labels: labels,
       datasets: [{
-        label: 'Horas focadas',
+        label: 'Tempo focado',
         data: dados,
         backgroundColor: '#00ffc3',
         borderColor: '#00ffc3',
@@ -243,19 +259,21 @@ function renderizarGraficoFoco(dados, labels) {
     options: {
       responsive: true,
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: '#ccc',
-            callback: value => {
-              const totalMinutes = value * 60;
-              const hours = Math.floor(totalMinutes / 60);
-              const minutes = Math.round(totalMinutes % 60);
-              return `${hours}h ${minutes}min`;
-            }
-          },
-          title: { display: true, text: 'Horas', color: '#ccc' }
-        },
+  y: {
+    beginAtZero: true,
+    ticks: {
+      color: '#ccc',
+      stepSize: 1,
+      callback: value => {
+        const totalMinutes = Math.floor(value);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}h ${minutes}min`;
+      }
+    },
+    title: { display: true, text: 'Horas', color: '#ccc' }
+  },
+
         x: {
           ticks: { color: '#ccc' }
         }
@@ -265,7 +283,7 @@ function renderizarGraficoFoco(dados, labels) {
         tooltip: {
           callbacks: {
             label: context => {
-              const totalMinutes = context.parsed.y * 60;
+              const totalMinutes = context.parsed.y;
               const hours = Math.floor(totalMinutes / 60);
               const minutes = Math.round(totalMinutes % 60);
               return `${hours}h ${minutes}min`;
@@ -318,9 +336,8 @@ async function renderizarGrafico(periodo = 'semana') {
     const [d2, m2, y2] = b.split('/').map(Number);
     return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
   });
-
-  const valores = labels.map(dia => (dadosPorDia[dia] / 60).toFixed(2));
-  renderizarGraficoFoco(valores, labels);
+const valores = labels.map(dia => dadosPorDia[dia]); // dados em minutos
+renderizarGraficoFoco(valores, labels);
 }
 
 startBtn.addEventListener('click', startTimer);
@@ -361,8 +378,9 @@ navButtons.forEach(btn => {
     btn.classList.add("active");
 
     if (target === "historico") {
-      mostrarHistorico();
-      renderizarGrafico("semana");
+  mostrarHistorico();
+  renderizarGrafico("semana");
+  atualizarResumo(); // 👈 isso aqui atualiza os cards corretamente!
     }
     if (target === "ranking") {
       mostrarRanking();
@@ -408,9 +426,10 @@ async function atualizarResumo() {
     diasComFoco[dataFormatada] = true;
   });
 
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
-  document.getElementById('total-focus').textContent = `${horas}:${String(minutos).padStart(2, '0')}`;
+ const horas = Math.floor(totalMinutos / 60);
+const minutos = totalMinutos % 60;
+document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}min`;
+
   document.getElementById('days-active').textContent = diasUnicos.size;
 
   const diasOrdenados = Object.keys(diasComFoco)
@@ -523,7 +542,13 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
 async function mostrarRanking() {
   const { data, error } = await supabase
     .from('sessoes1')
-    .select('usuario_id, duracao, usuarios ( name )');
+    .select(`
+      usuario_id,
+      duracao,
+      usuarios (
+        name
+      )
+    `);
 
   if (error) {
     console.error('Erro ao carregar ranking:', error);
@@ -533,7 +558,7 @@ async function mostrarRanking() {
   const agregados = {};
 
   data.forEach(sessao => {
-    const nome = sessao.usuarios?.name || 'Desconhecido';
+    const nome = sessao.usuarios?.name ?? 'Desconhecido'; // ← nome via relação
     if (!agregados[nome]) agregados[nome] = 0;
     agregados[nome] += sessao.duracao;
   });
@@ -593,22 +618,29 @@ const registerPass = document.getElementById("register-password");
 toggleSenhaRegister.addEventListener("click", () => {
   registerPass.type = registerPass.type === "password" ? "text" : "password";
 });
-async function registrarNomeUsuario() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+async function salvarSessao(tipo, duracao) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error("Usuário não autenticado:", userError?.message);
+    return;
+  }
 
-  const { data, error } = await supabase
-    .from('usuarios')
-    .upsert([{ id: user.id, name: user.user_metadata.full_name || 'Usuário' }], {
-      onConflict: 'id'
-    });
+  await registrarNomeUsuario(); // 🔐 adiciona essa linha!
+
+  const { error } = await supabase.from('sessoes1').insert([{
+    usuario_id: user.id,
+duracao: duracao,
+    data: new Date().toISOString(),
+    tipo: tipo
+  }]);
 
   if (error) {
-    console.error("Erro ao registrar nome do usuário:", error.message);
+    console.error('Erro ao salvar sessão:', error);
   } else {
-    console.log("✅ Nome de usuário registrado/atualizado");
+    console.log('✅ Sessão salva com sucesso!');
   }
 }
+
 
 document.getElementById("google-login").addEventListener("click", async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
