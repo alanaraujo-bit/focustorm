@@ -442,80 +442,291 @@ h1 {
 .lista-ranking li:last-child {
   border-bottom: none;
 }
-
-@media screen and (max-width: 600px) {
-  .lista-ranking {
-    max-height: 300px;
-    font-size: 0.9rem;
-  }
-
-  .lista-ranking li {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-}
 @media (max-width: 768px) {
   body {
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
-  .container {
-    padding: 1rem;
-    max-width: 100%;
-  }
-
-  .timer-display {
-    font-size: 2.5rem;
-  }
-
-  .timer-settings input {
-    width: 50px;
-    font-size: 0.9rem;
-  }
-
-  .timer-buttons button {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    margin: 0.3rem;
-  }
-
+  .container,
   .auth-container {
+    width: 95%;
     padding: 1rem;
-    width: 100%;
+    max-width: none;
+    margin: 1rem auto;
   }
 
   .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-    width: 100%;
+    gap: 0.8rem;
   }
 
-  .auth-form input, .auth-form button {
+  .auth-form input,
+  .auth-form button {
+    padding: 0.9rem;
+    font-size: 1.05rem;
+  }
+
+  h1, h2, h3 {
+    font-size: 1.3rem;
+    text-align: center;
+  }
+
+  .timer-display {
+    font-size: 3rem;
+    text-align: center;
+  }
+
+  .timer-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .timer-buttons button {
     width: 100%;
-    font-size: 1rem;
-    padding: 0.7rem;
+    font-size: 1.1rem;
   }
 
   nav.menu-topo {
     flex-direction: column;
-    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
   }
 
   nav.menu-topo .nav-btn {
-    margin: 0.2rem 0;
     width: 100%;
+    font-size: 1rem;
   }
 
   .historico-table th,
   .historico-table td {
-    padding: 0.4rem;
-    font-size: 0.8rem;
+    padding: 0.5rem;
+    font-size: 0.85rem;
   }
 
   canvas {
     max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .ranking-card {
+    font-size: 1rem;
+    padding: 0.8rem;
   }
 }
+/* LOGIN CLEAN E MINIMALISTA */
+body {
+  background-color: #121221;
+}
 
+.auth-container {
+  background-color: #1c1c2b;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  width: 90%;
+  max-width: 380px;
+  margin: 4rem auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo-login {
+  width: 50px;
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+.auth-container h2 {
+  color: #e0e0e0;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.auth-form input {
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #f2f4f7;
+  font-size: 1rem;
+  color: #333;
+}
+
+.senha-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f2f4f7;
+  padding: 0.2rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.senha-container input {
+  border: none;
+  background: transparent;
+  flex-grow: 1;
+  padding: 0.6rem;
+  color: #333;
+}
+
+.senha-container button {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding-right: 0.5rem;
+  color: #666;
+}
+
+.auth-form button {
+  padding: 0.8rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  background-color: #3ddc84;
+  color: white;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.auth-form button:hover {
+  background-color: #31bd71;
+}
+/* TELA DE LOGIN COM ABAS - FocuStorm */
+
+body {
+  background-color: #00c676;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.auth-container {
+  background-color: #1e1e2e;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  margin: 5vh auto;
+  text-align: center;
+}
+
+.tabs-auth {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1rem;
+}
+
+.tab-auth {
+  flex: 1;
+  padding: 0.8rem;
+  font-size: 1rem;
+  border: none;
+  background: none;
+  color: #ccc;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tab-auth.active {
+  color: #fff;
+  border-bottom: 2px solid #00ff99;
+}
+
+.tab-content h2 {
+  color: #fff;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.auth-container input {
+  width: 100%;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 8px;
+  background-color: #2d2d3f;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.auth-container input::placeholder {
+  color: #aaa;
+}
+
+.senha-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #2d2d3f;
+  padding: 0.2rem;
+  border-radius: 8px;
+}
+
+.senha-container input {
+  background: transparent;
+  border: none;
+  padding: 0.7rem;
+  width: 100%;
+  color: #fff;
+}
+
+.senha-container button {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #aaa;
+  cursor: pointer;
+  padding: 0 0.5rem;
+}
+
+.btn-auth {
+  width: 100%;
+  padding: 0.9rem;
+  margin-top: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+}
+
+.btn-auth.green {
+  background-color: #00c676;
+  color: #fff;
+}
+
+.btn-auth.green:hover {
+  background-color: #00b065;
+}
+
+.btn-auth.google {
+  background-color: #4285F4;
+  color: #fff;
+}
+
+.btn-auth.google:hover {
+  background-color: #357ae8;
+}
+
+.forgot-password {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #aaa;
+  text-decoration: none;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}

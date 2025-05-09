@@ -25,7 +25,6 @@ const btnFiltroHistorico = document.getElementById('btn-filtrar-historico');
 const valorTotalFiltrado = document.getElementById('valor-total-filtrado');
 const cardTotalFiltrado = document.getElementById('card-total-filtrado');
 
-let usuarioLogado = localStorage.getItem('usuarioLogado') || null;
 let timer;
 let isRunning = false;
 let isFocusTime = true;
@@ -33,52 +32,71 @@ let remainingTime = 0;
 let tipoGraficoAtual = 'bar';
 
 // ====== FUNÇÕES PRINCIPAIS ======
-function verificarLogin() {
-  if (usuarioLogado) {
-    authContainer.style.display = 'none';
-    document.getElementById("menu-topo").style.display = "flex";
-    document.getElementById("section-pomodoro").style.display = "block";
-    document.getElementById("section-historico").style.display = "none";
-    document.getElementById("section-ranking").style.display = "none";
-    mostrarHistorico();
-    mostrarRanking();
-    renderizarGrafico('semana');
-    resetTimer();
-    atualizarResumo(); // 👈 Adiciona esta linha aqui
-  } else {
+async function verificarLogin() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
     authContainer.style.display = 'block';
+    return;
   }
+
+  await registrarNomeUsuario(); // ✅ reforça que o usuário está registrado antes de tudo
+
+
+  authContainer.style.display = 'none';
+  document.getElementById("menu-topo").style.display = "flex";
+  document.getElementById("section-pomodoro").style.display = "block";
+  document.getElementById("section-historico").style.display = "none";
+  document.getElementById("section-ranking").style.display = "none";
+  mostrarHistorico();
+  mostrarRanking();
+  renderizarGrafico('semana');
+  resetTimer();
+  atualizarResumo();
 }
 
-loginBtn.addEventListener('click', () => {
-  const nome = inputName.value.trim();
-  const senha = inputPassword.value;
-  const usuarios = JSON.parse(localStorage.getItem('usuariosPomodoro')) || {};
-  if (usuarios[nome] && usuarios[nome] === senha) {
-    localStorage.setItem('usuarioLogado', nome);
-    usuarioLogado = nome;
-    verificarLogin();
+
+loginBtn.addEventListener('click', async () => {
+  const email = document.getElementById('login-name').value;
+  const senha = document.getElementById('login-password').value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: senha
+  });
+
+if (error) {
+  alert("Erro ao fazer login: " + error.message);
+} else {
+  await registrarNomeUsuario(); // ✅ garante que o nome já está salvo na tabela 'usuarios'
+  verificarLogin();             // ✅ aí sim carrega o app
+}
+
+});
+registerBtn.addEventListener('click', async () => {
+  const email = document.getElementById('register-email').value;
+  const senha = document.getElementById('register-password').value;
+
+  const { data, error } = await supabase.auth.signUp({
+    email: email,
+    password: senha
+  });
+
+  if (error) {
+    alert("Erro ao cadastrar: " + error.message);
   } else {
-    alert('Usuário ou senha incorretos!');
+    alert("Cadastro feito! Verifique seu e-mail para confirmar.");
+
+    // Se o Supabase estiver com confirmação de e-mail DESATIVADA, isso aqui funciona:
+    const login = await supabase.auth.signInWithPassword({ email, password });
+    if (login.error) {
+      alert("Erro ao logar após cadastro: " + login.error.message);
+    } else {
+await registrarNomeUsuario(); 
+await verificarLogin(); // 👈 AGORA sim, só continua depois do usuário ser salvo
+    }
   }
 });
 
-registerBtn.addEventListener('click', () => {
-  const nome = inputName.value.trim();
-  const senha = inputPassword.value;
-  if (!nome || !senha) return alert('Preencha todos os campos!');
-  const usuarios = JSON.parse(localStorage.getItem('usuariosPomodoro')) || {};
-  if (usuarios[nome]) return alert('Usuário já existe!');
-  usuarios[nome] = senha;
-  localStorage.setItem('usuariosPomodoro', JSON.stringify(usuarios));
-  alert('Usuário cadastrado! Faça login.');
-});
-
-logoutBtn.addEventListener('click', () => {
-  localStorage.removeItem('usuarioLogado');
-  usuarioLogado = null;
-  location.reload();
-});
 
 function formatTime(seconds) {
   const m = String(Math.floor(seconds / 60)).padStart(2, '0');
@@ -130,25 +148,52 @@ function resetTimer() {
 }
 
 async function salvarSessao(tipo, duracao) {
-  if (!usuarioLogado) return;
-  await supabase.from('sessoes').insert([{ usuario: usuarioLogado, tipo, duracao }]);
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error("Usuário não autenticado:", userError?.message);
+    return;
+  }
+
+  const { error } = await supabase.from("sessoes1").insert([
+    {
+      usuario_id: user.id,
+      duracao: duracao,
+      tipo: tipo, // 👈 isso aqui é ESSENCIAL
+      data: new Date()
+    }
+  ]);
+
+  if (error) {
+    console.error("❌ Erro ao salvar sessão:", error.message);
+  } else {
+    console.log("✅ Sessão salva com sucesso no Supabase!");
+  }
 }
 
-async function mostrarHistorico(filtro = 'todos') {
-  const { data: historico } = await supabase
-    .from('sessoes')
-    .select('*')
-    .eq('usuario', usuarioLogado)
-    .order('created_at', { ascending: false });
 
-  let filtrado = [...historico];
+async function mostrarHistorico(filtro = 'todos') {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return;
+
+  const { data, error } = await supabase
+    .from('sessoes1')
+    .select('*')
+    .eq('usuario_id', user.id)
+    .order('data', { ascending: false });
+
+  if (error) {
+    console.error('Erro ao carregar histórico:', error);
+    return;
+  }
+
+  let filtrado = [...data];
   if (filtro === 'personalizado') {
     const inicio = new Date(dataInicio.value);
     const fim = new Date(dataFim.value);
     fim.setHours(23, 59, 59, 999);
     filtrado = filtrado.filter(sessao => {
-      const data = new Date(sessao.created_at);
-      return data >= inicio && data <= fim;
+      const dataSessao = new Date(sessao.data);
+      return dataSessao >= inicio && dataSessao <= fim;
     });
   }
 
@@ -161,11 +206,15 @@ async function mostrarHistorico(filtro = 'todos') {
 
   let totalFocoMin = 0;
   filtrado.forEach(sessao => {
-    const dataFormatada = new Date(sessao.created_at).toLocaleDateString('pt-BR');
-    const item = document.createElement('li');
-    item.textContent = `${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min`;
-    listaHistorico.appendChild(item);
-    if (sessao.tipo === 'Foco') totalFocoMin += sessao.duracao;
+    const dataFormatada = new Date(sessao.data).toLocaleDateString('pt-BR');
+const item = document.createElement('li');
+item.innerHTML = `
+  ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min
+  <button onclick="editarSessao('${sessao.id}', ${sessao.duracao})">✏️</button>
+`;
+listaHistorico.appendChild(item);
+
+    totalFocoMin += sessao.duracao;
   });
 
   const horas = Math.floor(totalFocoMin / 60);
@@ -173,25 +222,6 @@ async function mostrarHistorico(filtro = 'todos') {
   valorTotalFiltrado.textContent = `${horas}:${String(minutos).padStart(2, '0')}`;
   cardTotalFiltrado.style.display = 'flex';
 }
-
-async function mostrarRanking() {
-  const { data } = await supabase.from('sessoes').select('*');
-  const tempos = {};
-  data.forEach(sessao => {
-    if (sessao.tipo === 'Foco') {
-      if (!tempos[sessao.usuario]) tempos[sessao.usuario] = 0;
-      tempos[sessao.usuario] += sessao.duracao;
-    }
-  });
-  const rankingArray = Object.entries(tempos).sort((a, b) => b[1] - a[1]);
-  rankingList.innerHTML = '';
-  rankingArray.forEach(([usuario, tempo]) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<strong>${usuario}</strong><span>${tempo} min</span>`;
-    rankingList.appendChild(li);
-  });
-}
-
 function renderizarGraficoFoco(dados, labels) {
   if (window.graficoFoco) window.graficoFoco.destroy();
 
@@ -248,10 +278,13 @@ function renderizarGraficoFoco(dados, labels) {
 }
 
 async function renderizarGrafico(periodo = 'semana') {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return;
+
   const { data, error } = await supabase
-    .from('sessoes')
+    .from('sessoes1')
     .select('*')
-    .eq('usuario', usuarioLogado);
+    .eq('usuario_id', user.id);
 
   if (error) {
     console.error('Erro ao carregar gráfico:', error);
@@ -272,8 +305,8 @@ async function renderizarGrafico(periodo = 'semana') {
 
   const dadosPorDia = {};
   data.forEach(sessao => {
-    const dataSessao = new Date(sessao.created_at);
-    if (sessao.tipo === 'Foco' && dataSessao >= inicio) {
+    const dataSessao = new Date(sessao.data);
+    if (dataSessao >= inicio) {
       const dia = dataSessao.toLocaleDateString('pt-BR');
       if (!dadosPorDia[dia]) dadosPorDia[dia] = 0;
       dadosPorDia[dia] += sessao.duracao;
@@ -289,6 +322,7 @@ async function renderizarGrafico(periodo = 'semana') {
   const valores = labels.map(dia => (dadosPorDia[dia] / 60).toFixed(2));
   renderizarGraficoFoco(valores, labels);
 }
+
 startBtn.addEventListener('click', startTimer);
 pauseBtn.addEventListener('click', pauseTimer);
 resetBtn.addEventListener('click', resetTimer);
@@ -347,13 +381,14 @@ document.querySelectorAll('.history-tab').forEach(tab => {
 });
 
 // Garante que o login automático funcione
-if (usuarioLogado) verificarLogin();
-
 async function atualizarResumo() {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return;
+
   const { data, error } = await supabase
-    .from('sessoes')
+    .from('sessoes1')
     .select('*')
-    .eq('usuario', usuarioLogado);
+    .eq('usuario_id', user.id);
 
   if (error) {
     console.error('Erro ao carregar resumo:', error);
@@ -365,14 +400,12 @@ async function atualizarResumo() {
   const diasComFoco = {};
 
   data.forEach(sessao => {
-    const dataSessao = new Date(sessao.created_at);
+    const dataSessao = new Date(sessao.data);
     const dataFormatada = dataSessao.toLocaleDateString('pt-BR');
 
-    if (sessao.tipo === 'Foco') {
-      totalMinutos += sessao.duracao;
-      diasUnicos.add(dataFormatada);
-      diasComFoco[dataFormatada] = true;
-    }
+    totalMinutos += sessao.duracao;
+    diasUnicos.add(dataFormatada);
+    diasComFoco[dataFormatada] = true;
   });
 
   const horas = Math.floor(totalMinutos / 60);
@@ -488,5 +521,173 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
 });
 
 async function mostrarRanking() {
-  await carregarRankingCompleto();
+  const { data, error } = await supabase
+    .from('sessoes1')
+    .select('usuario_id, duracao, usuarios ( name )');
+
+  if (error) {
+    console.error('Erro ao carregar ranking:', error);
+    return;
+  }
+
+  const agregados = {};
+
+  data.forEach(sessao => {
+    const nome = sessao.usuarios?.name || 'Desconhecido';
+    if (!agregados[nome]) agregados[nome] = 0;
+    agregados[nome] += sessao.duracao;
+  });
+
+  const rankingArray = Object.entries(agregados)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 100);
+
+  rankingList.innerHTML = '';
+
+  rankingArray.forEach(([nome, minutos], index) => {
+    const li = document.createElement('li');
+    const posicao = index + 1;
+    let medalha = '';
+    if (posicao === 1) medalha = '🥇';
+    else if (posicao === 2) medalha = '🥈';
+    else if (posicao === 3) medalha = '🥉';
+
+    const horas = Math.floor(minutos / 60);
+    const min = minutos % 60;
+    const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${min}min`;
+
+    li.innerHTML = `
+      <span>${medalha} ${posicao}º <strong>${nome}</strong></span>
+      <span>⏱️ ${tempoTexto}</span>
+    `;
+    rankingList.appendChild(li);
+  });
+}
+
+// Troca entre Login e Cadastrar
+const tabButtons = document.querySelectorAll(".tab-auth");
+const tabContents = document.querySelectorAll(".tab-content");
+
+tabButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    // Remove ativo de tudo
+    tabButtons.forEach(b => b.classList.remove("active"));
+    tabContents.forEach(c => c.style.display = "none");
+
+    // Ativa o clicado
+    btn.classList.add("active");
+    document.getElementById(`tab-${btn.dataset.tab}`).style.display = "block";
+  });
+});
+
+// Mostrar/ocultar senha - Login
+const toggleSenhaLogin = document.getElementById("toggleSenhaLogin");
+const loginPass = document.getElementById("login-password");
+toggleSenhaLogin.addEventListener("click", () => {
+  loginPass.type = loginPass.type === "password" ? "text" : "password";
+});
+
+// Mostrar/ocultar senha - Cadastro
+const toggleSenhaRegister = document.getElementById("toggleSenhaRegister");
+const registerPass = document.getElementById("register-password");
+toggleSenhaRegister.addEventListener("click", () => {
+  registerPass.type = registerPass.type === "password" ? "text" : "password";
+});
+async function registrarNomeUsuario() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from('usuarios')
+    .upsert([{ id: user.id, name: user.user_metadata.full_name || 'Usuário' }], {
+      onConflict: 'id'
+    });
+
+  if (error) {
+    console.error("Erro ao registrar nome do usuário:", error.message);
+  } else {
+    console.log("✅ Nome de usuário registrado/atualizado");
+  }
+}
+
+document.getElementById("google-login").addEventListener("click", async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+  });
+
+  if (error) {
+    console.error("Erro ao logar com Google:", error.message);
+  } else {
+    console.log("Redirecionando para login com Google...");
+
+    // Espera o usuário estar logado para registrar no Supabase
+    const checarUsuario = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        clearInterval(checarUsuario);
+        await registrarNomeUsuario();
+      }
+    }, 1000); // checa a cada 1 segundo até o usuário estar disponível
+  }
+});
+
+// Checar se o usuário está logado ao carregar a página
+supabase.auth.getUser().then(({ data: { user }, error }) => {
+  if (user) {
+    const email = user.email;
+    const nome = user.user_metadata?.full_name || "Usuário";
+
+    // Mostra no canto, nav ou onde quiser
+    const spanUser = document.getElementById("usuario-logado");
+    if (spanUser) {
+      spanUser.textContent = `👤 ${nome} (${email})`;
+    }
+
+    // Exibe as seções do app e oculta o login
+    document.getElementById("auth-container").style.display = "none";
+    document.getElementById("menu-topo").style.display = "flex";
+    document.getElementById("section-pomodoro").style.display = "block";
+  } else {
+    // Usuário não logado, mostra login
+    document.getElementById("auth-container").style.display = "block";
+    document.getElementById("menu-topo").style.display = "none";
+    document.getElementById("section-pomodoro").style.display = "none";
+  }
+});
+// LOGOUT
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error("Erro ao deslogar:", error.message);
+  } else {
+    // Esconde o app e volta pro login
+    document.getElementById("auth-container").style.display = "block";
+    document.getElementById("menu-topo").style.display = "none";
+    document.getElementById("section-pomodoro").style.display = "none";
+  }
+});
+async function editarSessao(id, duracaoAtual) {
+  const novoValor = prompt(`Editar duração (minutos):`, duracaoAtual);
+  const novaDuracao = parseInt(novoValor);
+
+  if (!isNaN(novaDuracao) && novaDuracao >= 0) {
+   const { data: { user }, error } = await supabase.auth.getUser();
+if (!user) return alert("Usuário não autenticado!");
+
+const { error: erroUpdate } = await supabase
+  .from('sessoes1')
+  .update({ duracao: novaDuracao })
+  .eq('id', id)
+  .eq('usuario_id', user.id);
+  if (erroUpdate) {
+  alert("Erro ao atualizar sessão!");
+  console.error(erroUpdate);
+    } else {
+      alert("Sessão atualizada!");
+      mostrarHistorico();
+      mostrarRanking();
+    }
+  } else {
+    alert("Valor inválido.");
+  }
 }

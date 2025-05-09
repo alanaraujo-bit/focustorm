@@ -8,19 +8,36 @@
 </head>
 <body>
   <!-- Login / Cadastro -->
-  <section id="auth-container" class="auth-container">
-    <img src="assets/logo-focustorm-icon.png" alt="Logo FocuStorm" class="logo-login" />
-    <h2>Bem-vindo ao FocuStorm</h2>
-    <div class="auth-form">
-      <input type="text" id="auth-name" placeholder="Nome de usuário" />
-      <div class="senha-container">
-        <input type="password" id="auth-password" placeholder="Senha" />
-        <button type="button" id="toggleSenha">👁️</button>
-      </div>
-      <button id="login-btn">Entrar</button>
-      <button id="register-btn">Cadastrar</button>
+<section id="auth-container" class="auth-container">
+  <div class="tabs-auth">
+    <button class="tab-auth active" data-tab="login">Login</button>
+    <button class="tab-auth" data-tab="register">Cadastrar</button>
+  </div>
+
+  <div id="tab-login" class="tab-content">
+    <h2>Entrar no FocuStorm</h2>
+    <input type="text" id="login-name" placeholder="Usuário ou Email" />
+    <div class="senha-container">
+      <input type="password" id="login-password" placeholder="Senha" />
+      <button type="button" id="toggleSenhaLogin">👁️</button>
     </div>
-  </section>
+    <button class="btn-auth green" id="login-btn">Entrar</button>
+    <button class="btn-auth google" id="google-login">Entrar com Google</button>
+    <a href="#" class="forgot-password">Esqueceu a senha?</a>
+  </div>
+
+  <div id="tab-register" class="tab-content" style="display: none;">
+    <h2>Criar Conta</h2>
+    <input type="text" id="register-name" placeholder="Usuário" />
+    <input type="email" id="register-email" placeholder="Email" />
+    <div class="senha-container">
+      <input type="password" id="register-password" placeholder="Senha" />
+      <button type="button" id="toggleSenhaRegister">👁️</button>
+    </div>
+    <button class="btn-auth green" id="register-btn">Cadastrar</button>
+    <button class="btn-auth google" id="google-register">Cadastrar com Google</button>
+  </div>
+</section>
 
   <!-- MENU DE NAVEGAÇÃO -->
   <nav id="menu-topo" class="menu-topo" style="display: none;">
