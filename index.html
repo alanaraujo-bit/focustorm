@@ -60,33 +60,72 @@
       <button class="history-tab" data-tab="details">Detalhado</button>
     </div>
 
-    <div id="history-summary" class="history-tab-content">
-      <div class="summary-cards">
-        <div class="card"><strong id="total-focus">0</strong><span>Horas focadas</span></div>
-        <div class="card"><strong id="days-active">0</strong><span>Dias ativos</span></div>
-        <div class="card"><strong id="streak-days">0</strong><span>Sequência (dias)</span></div>
-      </div>
-      <div class="graph-container">
-        <canvas id="focus-graph"></canvas>
-      </div>
+    <!-- ABA RESUMO -->
+   <div id="history-summary" class="history-tab-content">
+  <div class="summary-cards">
+    <div class="card">
+      <strong id="total-focus">0</strong>
+      <span>Horas focadas</span>
     </div>
+    <div class="card">
+      <strong id="days-active">0</strong>
+      <span>Dias ativos</span>
+    </div>
+    <div class="card">
+      <strong id="streak-days">0</strong>
+      <span>Sequência (dias)</span>
+    </div>
+  </div>
 
+  <!-- NOVO: Filtros para gráfico -->
+  <div class="filter-period">
+    <button data-period="semana" class="btn-period active">Semana</button>
+    <button data-period="mes" class="btn-period">Mês</button>
+    <button data-period="ano" class="btn-period">Ano</button>
+    <div class="graph-controls">
+  <button id="btn-tipo-grafico">Tipo: Barra</button>
+</div>
+
+  </div>
+
+  <!-- NOVO: Gráfico de colunas -->
+  <div class="graph-container">
+    <canvas id="focus-graph"></canvas>
+  </div>
+</div>
+
+    <!-- ABA DETALHADO -->
     <div id="history-details" class="history-tab-content" style="display: none;">
       <div class="filter-container">
         <label>De: <input type="date" id="data-inicio" /></label>
         <label>Até: <input type="date" id="data-fim" /></label>
         <button id="btn-filtrar-historico">Filtrar</button>
+          <button id="btn-limpar-filtro">Limpar Filtro</button> <!-- NOVO -->
       </div>
 
       <ul id="lista-historico" class="lista-historico"></ul>
+
+<div class="pagination-controls">
+  <button id="prev-page">Anterior</button>
+  <button id="next-page">Próxima</button>
+</div>
+
+      <!-- CARD TOTAL FILTRADO -->
+      <div id="card-total-filtrado" class="card" style="margin-top: 1rem; display: none;">
+        <strong id="valor-total-filtrado">0</strong>
+        <span>Horas filtradas</span>
+      </div>
     </div>
   </section>
 
   <!-- SEÇÃO: Ranking -->
-  <section id="section-ranking" class="container" style="display: none;">
-    <h2>Ranking</h2>
-    <ul id="ranking-list"></ul>
-  </section>
+<section id="section-ranking" class="container" style="display: none;">
+  <h2>Ranking</h2>
+  <ul id="ranking-list" class="lista-ranking" style="max-height: 300px; overflow-y: auto;"></ul>
+
+  <!-- Cronômetro de reset -->
+  <p id="contador-reset" class="contador-reset"></p>
+</section>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
