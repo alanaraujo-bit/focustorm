@@ -479,7 +479,7 @@ let rankingCompleto = [];
 
 async function carregarRankingCompleto() {
   try {
-    const response = await fetch('http://localhost:3000/ranking');
+    const response = await fetch('https://focustorm-backend.onrender.com/ranking');
     const dados = await response.json();
 
     rankingCompleto = dados.map(user => [user.nome, user.tempoTotal]);
