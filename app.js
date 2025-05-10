@@ -38,25 +38,25 @@ async function registrarNomeUsuario() {
 
   console.log("Tentando registrar:", user.id);
 
+  // Buscar usuário SEM usar .single() — evita erro se não existir
   const { data: existente, error: erroBusca } = await supabase
     .from('usuarios')
     .select('*')
-    .eq('id', user.id)
-    .single();
+    .eq('id', user.id);
 
   if (erroBusca) {
     console.error("Erro ao buscar usuário:", erroBusca.message);
     return;
   }
 
-  if (!existente) {
+  if (!existente || existente.length === 0) {
     const nomeBruto =
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
       user.email ||
       "Usuário";
 
-    const nome = nomeBruto.trim(); // <-- remove \n, espaços extras etc
+    const nome = nomeBruto.trim().replace(/\n/g, '');
 
     const { error: erroInsert } = await supabase.from('usuarios').insert([
       { id: user.id, name: nome }
@@ -71,6 +71,7 @@ async function registrarNomeUsuario() {
     console.log("Usuário já existe na tabela.");
   }
 }
+
 
 async function verificarLogin() {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -545,13 +546,9 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
 });
 async function mostrarRanking() {
   try {
-    // Buscar TODAS as sessões do tipo 'Foco'
-const { data: sessoes, error: erroSessoes } = await supabase
-  .from('sessoes1')
-  .select('usuario_id, duracao, tipo, usuarios ( name )');
-
-console.log('Sessoes recebidas:', sessoes);
-
+    const { data: sessoes, error: erroSessoes } = await supabase
+      .from('sessoes1')
+      .select('usuario_id, duracao, tipo');
 
     if (erroSessoes || !sessoes) {
       console.error('Erro ao buscar sessões:', erroSessoes?.message);
@@ -559,22 +556,17 @@ console.log('Sessoes recebidas:', sessoes);
       return;
     }
 
-    // Somar tempo por usuário
     const totais = {};
     sessoes.forEach(sessao => {
-      console.log('Totais por usuário:', totais);
       if (sessao.tipo === 'Foco') {
         if (!totais[sessao.usuario_id]) totais[sessao.usuario_id] = 0;
         totais[sessao.usuario_id] += sessao.duracao;
       }
     });
 
-    // Buscar todos os usuários
     const { data: usuarios, error: erroUsuarios } = await supabase
       .from('usuarios')
       .select('id, name');
-      console.log('Usuários recebidos:', usuarios);
-
 
     if (erroUsuarios || !usuarios) {
       console.error('Erro ao buscar usuários:', erroUsuarios?.message);
@@ -582,20 +574,16 @@ console.log('Sessoes recebidas:', sessoes);
       return;
     }
 
-    // Mapa de nomes
     const mapaNomes = {};
     usuarios.forEach(user => {
       mapaNomes[user.id] = user.name;
     });
 
-    // Ordenar ranking
-    const ranking = Object.entries(totais)
-      .sort((a, b) => b[1] - a[1]);
+    const ranking = Object.entries(totais).sort((a, b) => b[1] - a[1]);
 
-    // Exibir
     rankingList.innerHTML = '';
     ranking.forEach(([usuarioId, totalMinutos], index) => {
-  const nome = mapaNomes[usuarioId]?.trim() || `Usuário (${usuarioId})`;
+      const nome = mapaNomes[usuarioId] || `Usuário (${usuarioId})`;
       const horas = Math.floor(totalMinutos / 60);
       const minutos = totalMinutos % 60;
       const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${minutos}min`;
@@ -612,6 +600,7 @@ console.log('Sessoes recebidas:', sessoes);
       `;
       rankingList.appendChild(li);
     });
+
   } catch (err) {
     console.error('Erro inesperado ao carregar ranking:', err);
     rankingList.innerHTML = '<li>Erro inesperado ao carregar ranking.</li>';
@@ -649,8 +638,22 @@ async function salvarSessao(tipo, duracao) {
     return;
   }
 
+  // Garante que o usuário está registrado
   await registrarNomeUsuario();
 
+  // Confirma se ele foi registrado de fato
+  const { data: usuarioExiste } = await supabase
+    .from('usuarios')
+    .select('id')
+    .eq('id', user.id)
+    .single();
+
+  if (!usuarioExiste) {
+    console.error("Usuário ainda não está na tabela 'usuarios', não será possível salvar a sessão.");
+    return;
+  }
+
+  // Tenta salvar a sessão
   const { error: insertError } = await supabase.from('sessoes1').insert([{
     usuario_id: user.id,
     duracao: duracao,
@@ -659,11 +662,12 @@ async function salvarSessao(tipo, duracao) {
   }]);
 
   if (insertError) {
-    console.error('Erro ao salvar sessão:', insertError);
+    console.error('❌ Erro ao salvar sessão:', insertError.message);
   } else {
     console.log('✅ Sessão salva com sucesso!');
   }
 }
+
 
 const checarUsuario = setInterval(async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
