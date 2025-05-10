@@ -163,29 +163,6 @@ function resetTimer() {
   updateDisplay();
 }
 
-async function salvarSessao(tipo, duracao) {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error("Usuário não autenticado:", userError?.message);
-    return;
-  }
-
-  const { error } = await supabase.from('sessoes1').insert([
-    {
-      usuario_id: user.id,
-      duracao: duracao, // transforma de minutos para segundos
-      data: new Date().toISOString(),
-      tipo: tipo
-    }
-  ]);
-
-  if (error) {
-    console.error('Erro ao salvar sessão:', error);
-  } else {
-    console.log('✅ Sessão salva com sucesso!');
-  }
-}
-
 
 async function mostrarHistorico(filtro = 'todos') {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -625,11 +602,11 @@ async function salvarSessao(tipo, duracao) {
     return;
   }
 
-  await registrarNomeUsuario(); // 🔐 adiciona essa linha!
+  await registrarNomeUsuario(); // 🔐 garante que o usuário está salvo na tabela
 
   const { error } = await supabase.from('sessoes1').insert([{
     usuario_id: user.id,
-duracao: duracao,
+    duracao: duracao,
     data: new Date().toISOString(),
     tipo: tipo
   }]);
@@ -639,18 +616,22 @@ duracao: duracao,
   } else {
     console.log('✅ Sessão salva com sucesso!');
   }
-}
-
-
 document.getElementById("google-login").addEventListener("click", async () => {
+  await supabase.auth.signOut(); // 🔥 força o logout antes
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
+    options: {
+      prompt: 'select_account',
+      redirectTo: 'https://focustorm-th3y.vercel.app'
+    }
   });
 
   if (error) {
     console.error("Erro ao logar com Google:", error.message);
-  } else {
-    console.log("Redirecionando para login com Google...");
+  }
+});
+
 
     // Espera o usuário estar logado para registrar no Supabase
     const checarUsuario = setInterval(async () => {
@@ -661,7 +642,7 @@ document.getElementById("google-login").addEventListener("click", async () => {
       }
     }, 1000); // checa a cada 1 segundo até o usuário estar disponível
   }
-});
+
 
 // Checar se o usuário está logado ao carregar a página
 supabase.auth.getUser().then(({ data: { user }, error }) => {
@@ -725,12 +706,12 @@ const { error: erroUpdate } = await supabase
 }
 document.getElementById("google-register").addEventListener("click", async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
-  provider: 'google',
-  options: {
-    prompt: 'select_account' // 🔥 força o popup de escolha da conta
-  }
-});
-
+    provider: 'google',
+    options: {
+      prompt: 'select_account',
+      redirectTo: 'https://focustorm-th3y.vercel.app' // 🔁 redireciona corretamente para produção
+    }
+  });
 
   if (error) {
     console.error("Erro ao cadastrar com Google:", error.message);
@@ -743,6 +724,31 @@ document.getElementById("google-register").addEventListener("click", async () =>
       if (user) {
         clearInterval(checarUsuario);
         await registrarNomeUsuario(); // 🔐 garante que o nome vai pra tabela `usuarios`
+        verificarLogin();
+      }
+    }, 1000);
+  }
+});
+document.getElementById("google-login").addEventListener("click", async () => {
+  await supabase.auth.signOut(); // 🔥 força logout
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      prompt: 'select_account',
+      redirectTo: 'https://focustorm-th3y.vercel.app'
+    }
+  });
+
+  if (error) {
+    console.error("Erro ao logar com Google:", error.message);
+  } else {
+    console.log("Redirecionando para login com Google...");
+    const checarUsuario = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        clearInterval(checarUsuario);
+        await registrarNomeUsuario();
         verificarLogin();
       }
     }, 1000);
