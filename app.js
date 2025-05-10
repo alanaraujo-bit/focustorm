@@ -379,9 +379,10 @@ navButtons.forEach(btn => {
       renderizarGrafico("semana");
       atualizarResumo();
     }
-    if (target === "ranking") {
-      mostrarRanking();
-    }
+if (target === "ranking") {
+  carregarRankingCompleto(); // ✅
+}
+
   });
 });
 
@@ -477,38 +478,20 @@ const tamanhoPagina = 20;
 let rankingCompleto = [];
 
 async function carregarRankingCompleto() {
-  const { data, error: fetchError } = await supabase
-    .from('sessoes1')
-    .select(`
-      usuario_id,
-      duracao,
-      tipo,
-      usuarios (
-        name
-      )
-    `);
+  try {
+    const response = await fetch('http://localhost:3000/ranking');
+    const dados = await response.json();
 
-  if (fetchError) {
-    console.error('Erro ao carregar ranking:', fetchError);
-    return;
+    rankingCompleto = dados.map(user => [user.nome, user.tempoTotal]);
+    paginaRanking = 0;
+    document.getElementById('ranking-list').innerHTML = '';
+    carregarMaisRanking();
+  } catch (err) {
+    console.error('Erro ao buscar ranking via backend:', err);
+    document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking.</li>';
   }
-
-  const tempos = {};
-  data.forEach(sessao => {
-    if (sessao.tipo === 'Foco') {
-      const nome = sessao.usuarios?.name ?? 'Desconhecido';
-      if (!tempos[nome]) tempos[nome] = 0;
-      tempos[nome] += sessao.duracao;
-    }
-  });
-
-  rankingCompleto = Object.entries(tempos)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 100);
-  paginaRanking = 0;
-  document.getElementById('ranking-list').innerHTML = '';
-  carregarMaisRanking();
 }
+
 
 function carregarMaisRanking() {
   const inicio = paginaRanking * tamanhoPagina;
@@ -544,11 +527,20 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
     carregarMaisRanking();
   }
 });
+
 async function mostrarRanking() {
   try {
-    const { data: sessoes, error: erroSessoes } = await supabase
+    /*const { data: sessoes, error: erroSessoes } = await supabase
       .from('sessoes1')
-      .select('usuario_id, duracao, tipo');
+      .select('*');
+      console.log(data,sessoes)*/
+
+      const test = await supabase
+      .from('sessoes1')
+      .select('*');
+      console.log(test)
+alert(test)
+      return
 
     if (erroSessoes || !sessoes) {
       console.error('Erro ao buscar sessões:', erroSessoes?.message);
@@ -557,6 +549,7 @@ async function mostrarRanking() {
     }
 
     const totais = {};
+
     sessoes.forEach(sessao => {
       if (sessao.tipo === 'Foco') {
         if (!totais[sessao.usuario_id]) totais[sessao.usuario_id] = 0;
@@ -769,4 +762,9 @@ document.getElementById("google-login").addEventListener("click", async () => {
       }
     }, 1000);
   }
+});
+document.getElementById('btn-limpar-filtro').addEventListener('click', () => {
+  document.getElementById('data-inicio').value = '';
+  document.getElementById('data-fim').value = '';
+  mostrarHistorico(); // ✅ agora funciona
 });
