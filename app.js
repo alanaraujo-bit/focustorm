@@ -458,7 +458,14 @@ const tamanhoPagina = 20;
 let rankingCompleto = [];
 
 async function carregarRankingCompleto() {
-  const { data, error } = await supabase.from('sessoes').select('*');
+  const { data, error } = await supabase.from('sessoes1').select(`
+  usuario_id,
+  duracao,
+  usuarios (
+    name
+  )
+`);
+
   if (error) {
     console.error('Erro ao carregar ranking:', error);
     return;
