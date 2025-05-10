@@ -725,8 +725,12 @@ const { error: erroUpdate } = await supabase
 }
 document.getElementById("google-register").addEventListener("click", async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-  });
+  provider: 'google',
+  options: {
+    prompt: 'select_account' // 🔥 força o popup de escolha da conta
+  }
+});
+
 
   if (error) {
     console.error("Erro ao cadastrar com Google:", error.message);
