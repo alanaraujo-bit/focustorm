@@ -35,7 +35,7 @@ async function registrarNomeUsuario() {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: existente, error: erroBusca } = await supabase
+  const { data: existente } = await supabase
     .from('usuarios')
     .select('*')
     .eq('id', user.id)
@@ -623,22 +623,20 @@ async function salvarSessao(tipo, duracao) {
   } else {
     console.log('✅ Sessão salva com sucesso!');
   }
-document.getElementById("google-login").addEventListener("click", async () => {
-  await supabase.auth.signOut(); // 🔥 força o logout antes
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      prompt: 'select_account',
-      redirectTo: 'https://focustorm-th3y.vercel.app'
-    }
-  });
-
   if (error) {
     console.error("Erro ao logar com Google:", error.message);
-  }
-});
+  } else {
+    console.log("Redirecionando para login com Google...");
 
+    const checarUsuario = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        clearInterval(checarUsuario);
+        await registrarNomeUsuario(); // ✅ garante que o nome vai pra tabela `usuarios`
+        verificarLogin();             // ✅ mostra o app normalmente
+      }
+    }, 1000);
+  }
 
     // Espera o usuário estar logado para registrar no Supabase
     const checarUsuario = setInterval(async () => {
@@ -712,11 +710,11 @@ const { error: erroUpdate } = await supabase
   }
 }
 document.getElementById("google-register").addEventListener("click", async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       prompt: 'select_account',
-      redirectTo: 'https://focustorm-th3y.vercel.app' // 🔁 redireciona corretamente para produção
+      redirectTo: 'https://focustorm-th3y.vercel.app'
     }
   });
 
@@ -725,19 +723,32 @@ document.getElementById("google-register").addEventListener("click", async () =>
   } else {
     console.log("Redirecionando para cadastro com Google...");
 
-    // Aguarda o login acontecer para registrar o nome
     const checarUsuario = setInterval(async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         clearInterval(checarUsuario);
-        await registrarNomeUsuario(); // 🔐 garante que o nome vai pra tabela `usuarios`
-        verificarLogin();
+        await registrarNomeUsuario(); // ✅ salva o nome na tabela `usuarios`
+        verificarLogin();             // ✅ entra no app
       }
     }, 1000);
   }
 });
+  if (error) {
+    console.error("Erro ao logar com Google:", error.message);
+  } else {
+    console.log("Redirecionando para login com Google...");
+    const checarUsuario = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        clearInterval(checarUsuario);
+        await registrarNomeUsuario();
+        verificarLogin();
+      }
+    }, 1000);
+  }
+  // LOGIN COM GOOGLE (correto, fora de qualquer função)
 document.getElementById("google-login").addEventListener("click", async () => {
-  await supabase.auth.signOut(); // 🔥 força logout
+  await supabase.auth.signOut();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
