@@ -50,11 +50,13 @@ async function registrarNomeUsuario() {
   }
 
   if (!existente) {
-    const nome =
+    const nomeBruto =
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
       user.email ||
       "Usuário";
+
+    const nome = nomeBruto.trim(); // <-- remove \n, espaços extras etc
 
     const { error: erroInsert } = await supabase.from('usuarios').insert([
       { id: user.id, name: nome }
@@ -543,51 +545,60 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
 });
 async function mostrarRanking() {
   try {
-    // 1. Buscar TODAS as sessões
-    const { data: sessoes, error: fetchError } = await supabase
-      .from('sessoes1')
-      .select('usuario_id, duracao, tipo');
+    // Buscar TODAS as sessões do tipo 'Foco'
+const { data: sessoes, error: erroSessoes } = await supabase
+  .from('sessoes1')
+  .select('usuario_id, duracao, tipo, usuarios ( name )');
 
-    if (fetchError) {
-      console.error('Erro ao buscar sessões:', fetchError.message);
-      rankingList.innerHTML = '<li>Erro ao carregar ranking.</li>';
+console.log('Sessoes recebidas:', sessoes);
+
+
+    if (erroSessoes || !sessoes) {
+      console.error('Erro ao buscar sessões:', erroSessoes?.message);
+      rankingList.innerHTML = '<li>Erro ao carregar sessões.</li>';
       return;
     }
 
-    // 2. Agrupar por usuario_id e somar
-    const tempoPorUsuario = {};
+    // Somar tempo por usuário
+    const totais = {};
     sessoes.forEach(sessao => {
+      console.log('Totais por usuário:', totais);
       if (sessao.tipo === 'Foco') {
-        if (!tempoPorUsuario[sessao.usuario_id]) {
-          tempoPorUsuario[sessao.usuario_id] = 0;
-        }
-        tempoPorUsuario[sessao.usuario_id] += sessao.duracao;
+        if (!totais[sessao.usuario_id]) totais[sessao.usuario_id] = 0;
+        totais[sessao.usuario_id] += sessao.duracao;
       }
     });
 
-    // 3. Ordenar
-    const ranking = Object.entries(tempoPorUsuario)
-      .sort((a, b) => b[1] - a[1]);
-
-    // 4. Buscar todos os nomes de uma vez só
-    const { data: usuarios } = await supabase
+    // Buscar todos os usuários
+    const { data: usuarios, error: erroUsuarios } = await supabase
       .from('usuarios')
       .select('id, name');
+      console.log('Usuários recebidos:', usuarios);
 
-    // 5. Criar mapa de nomes
+
+    if (erroUsuarios || !usuarios) {
+      console.error('Erro ao buscar usuários:', erroUsuarios?.message);
+      rankingList.innerHTML = '<li>Erro ao carregar usuários.</li>';
+      return;
+    }
+
+    // Mapa de nomes
     const mapaNomes = {};
-    usuarios.forEach(u => {
-      mapaNomes[u.id] = u.name;
+    usuarios.forEach(user => {
+      mapaNomes[user.id] = user.name;
     });
 
-    // 6. Exibir ranking
-    rankingList.innerHTML = '';
+    // Ordenar ranking
+    const ranking = Object.entries(totais)
+      .sort((a, b) => b[1] - a[1]);
 
-    ranking.forEach(([id, minutos], index) => {
-      const nome = mapaNomes[id] || `Usuário (${id})`;
-      const horas = Math.floor(minutos / 60);
-      const min = minutos % 60;
-      const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${min}min`;
+    // Exibir
+    rankingList.innerHTML = '';
+    ranking.forEach(([usuarioId, totalMinutos], index) => {
+  const nome = mapaNomes[usuarioId]?.trim() || `Usuário (${usuarioId})`;
+      const horas = Math.floor(totalMinutos / 60);
+      const minutos = totalMinutos % 60;
+      const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${minutos}min`;
 
       let medalha = '';
       if (index === 0) medalha = '🥇';
