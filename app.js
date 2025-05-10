@@ -1,9 +1,7 @@
-// ====== CONEXÃO COM SUPABASE ======
 const supabaseUrl = 'https://tjocgefyjgyndzahcwwd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqb2NnZWZ5amd5bmR6YWhjd3dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NjExMzgsImV4cCI6MjA2MjIzNzEzOH0.xQxMpAXNbwzrc03WToTCOGv_6v1OSEvdSVwzPEzQGr0'; // (chave encurtada por segurança)
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqb2NnZWZ5amd5bmR6YWhjd3dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NjExMzgsImV4cCI6MjA2MjIzNzEzOH0.xQxMpAXNbwzrc03WToTCOGv_6v1OSEvdSVwzPEzQGr0';
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// ====== ELEMENTOS DE DOM ======
 const authContainer = document.getElementById('auth-container');
 const loginBtn = document.getElementById('login-btn');
 const registerBtn = document.getElementById('register-btn');
@@ -32,31 +30,54 @@ let remainingTime = 0;
 let tipoGraficoAtual = 'bar';
 
 async function registrarNomeUsuario() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (!user) return;
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.warn("Usuário não autenticado ao tentar registrar.");
+    return;
+  }
 
-  const { data: existente } = await supabase
+  console.log("Tentando registrar:", user.id);
+
+  const { data: existente, error: erroBusca } = await supabase
     .from('usuarios')
     .select('*')
     .eq('id', user.id)
     .single();
 
+  if (erroBusca) {
+    console.error("Erro ao buscar usuário:", erroBusca.message);
+    return;
+  }
+
   if (!existente) {
-    const nome = user.user_metadata?.full_name || user.email || "Usuário";
-    await supabase.from('usuarios').insert([{ id: user.id, name: nome }]);
+    const nome =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email ||
+      "Usuário";
+
+    const { error: erroInsert } = await supabase.from('usuarios').insert([
+      { id: user.id, name: nome }
+    ]);
+
+    if (erroInsert) {
+      console.error("❌ Erro ao inserir usuário:", erroInsert.message);
+    } else {
+      console.log("✅ Usuário inserido com sucesso!");
+    }
+  } else {
+    console.log("Usuário já existe na tabela.");
   }
 }
 
-// ====== FUNÇÕES PRINCIPAIS ======
 async function verificarLogin() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
     authContainer.style.display = 'block';
     return;
   }
 
-  await registrarNomeUsuario(); // ✅ reforça que o usuário está registrado antes de tudo
-
+  await registrarNomeUsuario();
 
   authContainer.style.display = 'none';
   document.getElementById("menu-topo").style.display = "flex";
@@ -70,49 +91,46 @@ async function verificarLogin() {
   atualizarResumo();
 }
 
-
 loginBtn.addEventListener('click', async () => {
   const email = document.getElementById('login-name').value;
   const senha = document.getElementById('login-password').value;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error: loginError } = await supabase.auth.signInWithPassword({
     email: email,
     password: senha
   });
 
-if (error) {
-  alert("Erro ao fazer login: " + error.message);
-} else {
-  await registrarNomeUsuario(); // ✅ garante que o nome já está salvo na tabela 'usuarios'
-  verificarLogin();             // ✅ aí sim carrega o app
-}
-
+  if (loginError) {
+    alert("Erro ao fazer login: " + loginError.message);
+  } else {
+    await registrarNomeUsuario();
+    verificarLogin();
+  }
 });
+
 registerBtn.addEventListener('click', async () => {
   const email = document.getElementById('register-email').value;
   const senha = document.getElementById('register-password').value;
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error: signUpError } = await supabase.auth.signUp({
     email: email,
     password: senha
   });
 
-  if (error) {
-    alert("Erro ao cadastrar: " + error.message);
+  if (signUpError) {
+    alert("Erro ao cadastrar: " + signUpError.message);
   } else {
     alert("Cadastro feito! Verifique seu e-mail para confirmar.");
 
-    // Se o Supabase estiver com confirmação de e-mail DESATIVADA, isso aqui funciona:
-    const login = await supabase.auth.signInWithPassword({ email, password });
-    if (login.error) {
-      alert("Erro ao logar após cadastro: " + login.error.message);
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    if (loginError) {
+      alert("Erro ao logar após cadastro: " + loginError.message);
     } else {
-await registrarNomeUsuario(); 
-await verificarLogin(); // 👈 AGORA sim, só continua depois do usuário ser salvo
+      await registrarNomeUsuario();
+      await verificarLogin();
     }
   }
 });
-
 
 function formatTime(seconds) {
   const m = String(Math.floor(seconds / 60)).padStart(2, '0');
@@ -163,19 +181,18 @@ function resetTimer() {
   updateDisplay();
 }
 
-
 async function mostrarHistorico(filtro = 'todos') {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return;
 
-  const { data, error } = await supabase
+  const { data, error: fetchError } = await supabase
     .from('sessoes1')
     .select('*')
     .eq('usuario_id', user.id)
     .order('data', { ascending: false });
 
-  if (error) {
-    console.error('Erro ao carregar histórico:', error);
+  if (fetchError) {
+    console.error('Erro ao carregar histórico:', fetchError);
     return;
   }
 
@@ -200,12 +217,12 @@ async function mostrarHistorico(filtro = 'todos') {
   let totalFocoMin = 0;
   filtrado.forEach(sessao => {
     const dataFormatada = new Date(sessao.data).toLocaleDateString('pt-BR');
-const item = document.createElement('li');
-item.innerHTML = `
-  ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min
-  <button onclick="editarSessao('${sessao.id}', ${sessao.duracao})">✏️</button>
-`;
-listaHistorico.appendChild(item);
+    const item = document.createElement('li');
+    item.innerHTML = `
+      ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min
+      <button onclick="editarSessao('${sessao.id}', ${sessao.duracao})">✏️</button>
+    `;
+    listaHistorico.appendChild(item);
 
     totalFocoMin += sessao.duracao;
   });
@@ -215,6 +232,7 @@ listaHistorico.appendChild(item);
   valorTotalFiltrado.textContent = `${horas}:${String(minutos).padStart(2, '0')}`;
   cardTotalFiltrado.style.display = 'flex';
 }
+
 function renderizarGraficoFoco(dados, labels) {
   if (window.graficoFoco) window.graficoFoco.destroy();
 
@@ -236,21 +254,20 @@ function renderizarGraficoFoco(dados, labels) {
     options: {
       responsive: true,
       scales: {
-  y: {
-    beginAtZero: true,
-    ticks: {
-      color: '#ccc',
-      stepSize: 1,
-      callback: value => {
-        const totalMinutes = Math.floor(value);
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        return `${hours}h ${minutes}min`;
-      }
-    },
-    title: { display: true, text: 'Horas', color: '#ccc' }
-  },
-
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#ccc',
+            stepSize: 1,
+            callback: value => {
+              const totalMinutes = Math.floor(value);
+              const hours = Math.floor(totalMinutes / 60);
+              const minutes = totalMinutes % 60;
+              return `${hours}h ${minutes}min`;
+            }
+          },
+          title: { display: true, text: 'Horas', color: '#ccc' }
+        },
         x: {
           ticks: { color: '#ccc' }
         }
@@ -276,13 +293,13 @@ async function renderizarGrafico(periodo = 'semana') {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return;
 
-  const { data, error } = await supabase
+  const { data, error: fetchError } = await supabase
     .from('sessoes1')
     .select('*')
     .eq('usuario_id', user.id);
 
-  if (error) {
-    console.error('Erro ao carregar gráfico:', error);
+  if (fetchError) {
+    console.error('Erro ao carregar gráfico:', fetchError);
     return;
   }
 
@@ -313,8 +330,8 @@ async function renderizarGrafico(periodo = 'semana') {
     const [d2, m2, y2] = b.split('/').map(Number);
     return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
   });
-const valores = labels.map(dia => dadosPorDia[dia]); // dados em minutos
-renderizarGraficoFoco(valores, labels);
+  const valores = labels.map(dia => dadosPorDia[dia]);
+  renderizarGraficoFoco(valores, labels);
 }
 
 startBtn.addEventListener('click', startTimer);
@@ -355,9 +372,9 @@ navButtons.forEach(btn => {
     btn.classList.add("active");
 
     if (target === "historico") {
-  mostrarHistorico();
-  renderizarGrafico("semana");
-  atualizarResumo(); // 👈 isso aqui atualiza os cards corretamente!
+      mostrarHistorico();
+      renderizarGrafico("semana");
+      atualizarResumo();
     }
     if (target === "ranking") {
       mostrarRanking();
@@ -375,18 +392,17 @@ document.querySelectorAll('.history-tab').forEach(tab => {
   });
 });
 
-// Garante que o login automático funcione
 async function atualizarResumo() {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return;
 
-  const { data, error } = await supabase
+  const { data, error: fetchError } = await supabase
     .from('sessoes1')
     .select('*')
     .eq('usuario_id', user.id);
 
-  if (error) {
-    console.error('Erro ao carregar resumo:', error);
+  if (fetchError) {
+    console.error('Erro ao carregar resumo:', fetchError);
     return;
   }
 
@@ -403,9 +419,9 @@ async function atualizarResumo() {
     diasComFoco[dataFormatada] = true;
   });
 
- const horas = Math.floor(totalMinutos / 60);
-const minutos = totalMinutos % 60;
-document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}min`;
+  const horas = Math.floor(totalMinutos / 60);
+  const minutos = totalMinutos % 60;
+  document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}min`;
 
   document.getElementById('days-active').textContent = diasUnicos.size;
 
@@ -458,34 +474,37 @@ const tamanhoPagina = 20;
 let rankingCompleto = [];
 
 async function carregarRankingCompleto() {
-  const { data, error } = await supabase.from('sessoes1').select(`
-  usuario_id,
-  duracao,
-  usuarios (
-    name
-  )
-`);
+  const { data, error: fetchError } = await supabase
+    .from('sessoes1')
+    .select(`
+      usuario_id,
+      duracao,
+      tipo,
+      usuarios (
+        name
+      )
+    `);
 
-  if (error) {
-    console.error('Erro ao carregar ranking:', error);
+  if (fetchError) {
+    console.error('Erro ao carregar ranking:', fetchError);
     return;
   }
 
   const tempos = {};
   data.forEach(sessao => {
     if (sessao.tipo === 'Foco') {
-      if (!tempos[sessao.usuario]) tempos[sessao.usuario] = 0;
-      tempos[sessao.usuario] += sessao.duracao;
+      const nome = sessao.usuarios?.name ?? 'Desconhecido';
+      if (!tempos[nome]) tempos[nome] = 0;
+      tempos[nome] += sessao.duracao;
     }
   });
 
   rankingCompleto = Object.entries(tempos)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 100); // limita os 100 primeiros
+    .slice(0, 100);
   paginaRanking = 0;
   document.getElementById('ranking-list').innerHTML = '';
-  carregarMaisRanking(); // carrega a primeira página
-  atualizarContagemRegressiva();
+  carregarMaisRanking();
 }
 
 function carregarMaisRanking() {
@@ -522,86 +541,84 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
     carregarMaisRanking();
   }
 });
-
 async function mostrarRanking() {
-  const { data, error } = await supabase
-    .from('sessoes1')
-    .select(`
-      usuario_id,
-      duracao,
-      usuarios (
-        name
-      )
-    `);
+  try {
+    const { data, error } = await supabase
+      .from('sessoes1')
+      .select(`
+        usuario_id,
+        usuarios (name),
+        total: duracao (sum)
+      `, { count: 'exact' })
+      .eq('tipo', 'Foco')
+      .group('usuario_id')
+      .order('total', { ascending: false })
+      .limit(100);
 
-  if (error) {
-    console.error('Erro ao carregar ranking:', error);
-    return;
+    if (error) {
+      console.error('Erro ao carregar ranking:', error.message);
+      rankingList.innerHTML = '<li>Erro ao carregar ranking: ' + error.message + '</li>';
+      return;
+    }
+
+    console.log('Dados brutos do ranking:', data); // Log dos dados retornados
+    rankingList.innerHTML = '';
+
+    if (!data || data.length === 0) {
+      rankingList.innerHTML = '<li>Nenhum dado de ranking disponível.</li>';
+      return;
+    }
+
+    data.forEach((item, index) => {
+      console.log('Processando item:', item); // Log de cada item antes de renderizar
+      const posicao = index + 1;
+      const nome = item.usuarios?.name || `Usuário Desconhecido (${item.usuario_id})`;
+      const totalMinutos = item.total || 0;
+      const horas = Math.floor(totalMinutos / 60);
+      const min = totalMinutos % 60;
+      const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${min}min`;
+
+      let medalha = '';
+      if (posicao === 1) medalha = '🥇';
+      else if (posicao === 2) medalha = '🥈';
+      else if (posicao === 3) medalha = '🥉';
+
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span>${medalha} ${posicao}º <strong>${nome}</strong></span>
+        <span>⏱️ ${tempoTexto}</span>
+      `;
+      rankingList.appendChild(li);
+    });
+  } catch (err) {
+    console.error('Erro inesperado ao carregar ranking:', err);
+    rankingList.innerHTML = '<li>Erro inesperado ao carregar ranking.</li>';
   }
-
-  const agregados = {};
-
-  data.forEach(sessao => {
-    const nome = sessao.usuarios?.name ?? 'Desconhecido'; // ← nome via relação
-    if (!agregados[nome]) agregados[nome] = 0;
-    agregados[nome] += sessao.duracao;
-  });
-
-  const rankingArray = Object.entries(agregados)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 100);
-
-  rankingList.innerHTML = '';
-
-  rankingArray.forEach(([nome, minutos], index) => {
-    const li = document.createElement('li');
-    const posicao = index + 1;
-    let medalha = '';
-    if (posicao === 1) medalha = '🥇';
-    else if (posicao === 2) medalha = '🥈';
-    else if (posicao === 3) medalha = '🥉';
-
-    const horas = Math.floor(minutos / 60);
-    const min = minutos % 60;
-    const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${min}min`;
-
-    li.innerHTML = `
-      <span>${medalha} ${posicao}º <strong>${nome}</strong></span>
-      <span>⏱️ ${tempoTexto}</span>
-    `;
-    rankingList.appendChild(li);
-  });
 }
-
-// Troca entre Login e Cadastrar
 const tabButtons = document.querySelectorAll(".tab-auth");
 const tabContents = document.querySelectorAll(".tab-content");
 
 tabButtons.forEach(btn => {
   btn.addEventListener("click", () => {
-    // Remove ativo de tudo
     tabButtons.forEach(b => b.classList.remove("active"));
     tabContents.forEach(c => c.style.display = "none");
-
-    // Ativa o clicado
     btn.classList.add("active");
     document.getElementById(`tab-${btn.dataset.tab}`).style.display = "block";
   });
 });
 
-// Mostrar/ocultar senha - Login
 const toggleSenhaLogin = document.getElementById("toggleSenhaLogin");
 const loginPass = document.getElementById("login-password");
 toggleSenhaLogin.addEventListener("click", () => {
   loginPass.type = loginPass.type === "password" ? "text" : "password";
 });
 
-// Mostrar/ocultar senha - Cadastro
 const toggleSenhaRegister = document.getElementById("toggleSenhaRegister");
 const registerPass = document.getElementById("register-password");
 toggleSenhaRegister.addEventListener("click", () => {
   registerPass.type = registerPass.type === "password" ? "text" : "password";
 });
+
 async function salvarSessao(tipo, duracao) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
@@ -609,97 +626,75 @@ async function salvarSessao(tipo, duracao) {
     return;
   }
 
-  await registrarNomeUsuario(); // 🔐 garante que o usuário está salvo na tabela
+  await registrarNomeUsuario();
 
-  const { error } = await supabase.from('sessoes1').insert([{
+  const { error: insertError } = await supabase.from('sessoes1').insert([{
     usuario_id: user.id,
     duracao: duracao,
     data: new Date().toISOString(),
     tipo: tipo
   }]);
 
-  if (error) {
-    console.error('Erro ao salvar sessão:', error);
+  if (insertError) {
+    console.error('Erro ao salvar sessão:', insertError);
   } else {
     console.log('✅ Sessão salva com sucesso!');
   }
-  if (error) {
-    console.error("Erro ao logar com Google:", error.message);
-  } else {
-    console.log("Redirecionando para login com Google...");
+}
 
-    const checarUsuario = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        clearInterval(checarUsuario);
-        await registrarNomeUsuario(); // ✅ garante que o nome vai pra tabela `usuarios`
-        verificarLogin();             // ✅ mostra o app normalmente
-      }
-    }, 1000);
+const checarUsuario = setInterval(async () => {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (user) {
+    clearInterval(checarUsuario);
+    await registrarNomeUsuario();
   }
+}, 1000);
 
-    // Espera o usuário estar logado para registrar no Supabase
-    const checarUsuario = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        clearInterval(checarUsuario);
-        await registrarNomeUsuario();
-      }
-    }, 1000); // checa a cada 1 segundo até o usuário estar disponível
-  }
-
-
-// Checar se o usuário está logado ao carregar a página
-supabase.auth.getUser().then(({ data: { user }, error }) => {
+supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
   if (user) {
     const email = user.email;
     const nome = user.user_metadata?.full_name || "Usuário";
-
-    // Mostra no canto, nav ou onde quiser
     const spanUser = document.getElementById("usuario-logado");
     if (spanUser) {
       spanUser.textContent = `👤 ${nome} (${email})`;
     }
-
-    // Exibe as seções do app e oculta o login
     document.getElementById("auth-container").style.display = "none";
     document.getElementById("menu-topo").style.display = "flex";
     document.getElementById("section-pomodoro").style.display = "block";
   } else {
-    // Usuário não logado, mostra login
     document.getElementById("auth-container").style.display = "block";
     document.getElementById("menu-topo").style.display = "none";
     document.getElementById("section-pomodoro").style.display = "none";
   }
 });
-// LOGOUT
+
 document.getElementById("logout-btn").addEventListener("click", async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    console.error("Erro ao deslogar:", error.message);
+  const { error: logoutError } = await supabase.auth.signOut();
+  if (logoutError) {
+    console.error("Erro ao deslogar:", logoutError.message);
   } else {
-    // Esconde o app e volta pro login
     document.getElementById("auth-container").style.display = "block";
     document.getElementById("menu-topo").style.display = "none";
     document.getElementById("section-pomodoro").style.display = "none";
   }
 });
+
 async function editarSessao(id, duracaoAtual) {
   const novoValor = prompt(`Editar duração (minutos):`, duracaoAtual);
   const novaDuracao = parseInt(novoValor);
 
   if (!isNaN(novaDuracao) && novaDuracao >= 0) {
-   const { data: { user }, error } = await supabase.auth.getUser();
-if (!user) return alert("Usuário não autenticado!");
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (!user) return alert("Usuário não autenticado!");
 
-const { error: erroUpdate } = await supabase
-  .from('sessoes1')
-  .update({ duracao: novaDuracao })
-  .eq('id', id)
-  .eq('usuario_id', user.id);
-  if (erroUpdate) {
-  alert("Erro ao atualizar sessão!");
-  console.error(erroUpdate);
+    const { error: erroUpdate } = await supabase
+      .from('sessoes1')
+      .update({ duracao: novaDuracao })
+      .eq('id', id)
+      .eq('usuario_id', user.id);
+    if (erroUpdate) {
+      alert("Erro ao atualizar sessão!");
+      console.error(erroUpdate);
     } else {
       alert("Sessão atualizada!");
       mostrarHistorico();
@@ -709,48 +704,24 @@ const { error: erroUpdate } = await supabase
     alert("Valor inválido.");
   }
 }
+
 document.getElementById("google-register").addEventListener("click", async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { error: oauthError } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       prompt: 'select_account',
       redirectTo: 'https://focustorm-th3y.vercel.app'
     }
   });
-
-  if (error) {
-    console.error("Erro ao cadastrar com Google:", error.message);
-  } else {
-    console.log("Redirecionando para cadastro com Google...");
-
-    const checarUsuario = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        clearInterval(checarUsuario);
-        await registrarNomeUsuario(); // ✅ salva o nome na tabela `usuarios`
-        verificarLogin();             // ✅ entra no app
-      }
-    }, 1000);
+  if (oauthError) {
+    console.error("Erro ao registrar com Google:", oauthError.message);
   }
 });
-  if (error) {
-    console.error("Erro ao logar com Google:", error.message);
-  } else {
-    console.log("Redirecionando para login com Google...");
-    const checarUsuario = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        clearInterval(checarUsuario);
-        await registrarNomeUsuario();
-        verificarLogin();
-      }
-    }, 1000);
-  }
-  // LOGIN COM GOOGLE (correto, fora de qualquer função)
+
 document.getElementById("google-login").addEventListener("click", async () => {
   await supabase.auth.signOut();
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       prompt: 'select_account',
@@ -758,12 +729,12 @@ document.getElementById("google-login").addEventListener("click", async () => {
     }
   });
 
-  if (error) {
-    console.error("Erro ao logar com Google:", error.message);
+  if (oauthError) {
+    console.error("Erro ao logar com Google:", oauthError.message);
   } else {
     console.log("Redirecionando para login com Google...");
     const checarUsuario = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (user) {
         clearInterval(checarUsuario);
         await registrarNomeUsuario();
