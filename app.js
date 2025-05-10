@@ -723,3 +723,24 @@ const { error: erroUpdate } = await supabase
     alert("Valor inválido.");
   }
 }
+document.getElementById("google-register").addEventListener("click", async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+  });
+
+  if (error) {
+    console.error("Erro ao cadastrar com Google:", error.message);
+  } else {
+    console.log("Redirecionando para cadastro com Google...");
+
+    // Aguarda o login acontecer para registrar o nome
+    const checarUsuario = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        clearInterval(checarUsuario);
+        await registrarNomeUsuario(); // 🔐 garante que o nome vai pra tabela `usuarios`
+        verificarLogin();
+      }
+    }, 1000);
+  }
+});
