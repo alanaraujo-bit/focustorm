@@ -543,49 +543,60 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
 });
 async function mostrarRanking() {
   try {
-    const { data, error } = await supabase
+    // 1. Buscar TODAS as sessões
+    const { data: sessoes, error: fetchError } = await supabase
       .from('sessoes1')
-      .select(`
-        usuario_id,
-        usuarios (name),
-        total: duracao (sum)
-      `, { count: 'exact' })
-      .eq('tipo', 'Foco')
-      .group('usuario_id')
-      .order('total', { ascending: false })
-      .limit(100);
+      .select('usuario_id, duracao, tipo');
 
-    if (error) {
-      console.error('Erro ao carregar ranking:', error.message);
-      rankingList.innerHTML = '<li>Erro ao carregar ranking: ' + error.message + '</li>';
+    if (fetchError) {
+      console.error('Erro ao buscar sessões:', fetchError.message);
+      rankingList.innerHTML = '<li>Erro ao carregar ranking.</li>';
       return;
     }
 
-    console.log('Dados brutos do ranking:', data); // Log dos dados retornados
+    // 2. Agrupar por usuario_id e somar
+    const tempoPorUsuario = {};
+    sessoes.forEach(sessao => {
+      if (sessao.tipo === 'Foco') {
+        if (!tempoPorUsuario[sessao.usuario_id]) {
+          tempoPorUsuario[sessao.usuario_id] = 0;
+        }
+        tempoPorUsuario[sessao.usuario_id] += sessao.duracao;
+      }
+    });
+
+    // 3. Ordenar
+    const ranking = Object.entries(tempoPorUsuario)
+      .sort((a, b) => b[1] - a[1]);
+
+    // 4. Buscar todos os nomes de uma vez só
+    const { data: usuarios } = await supabase
+      .from('usuarios')
+      .select('id, name');
+
+    // 5. Criar mapa de nomes
+    const mapaNomes = {};
+    usuarios.forEach(u => {
+      mapaNomes[u.id] = u.name;
+    });
+
+    // 6. Exibir ranking
     rankingList.innerHTML = '';
 
-    if (!data || data.length === 0) {
-      rankingList.innerHTML = '<li>Nenhum dado de ranking disponível.</li>';
-      return;
-    }
-
-    data.forEach((item, index) => {
-      console.log('Processando item:', item); // Log de cada item antes de renderizar
-      const posicao = index + 1;
-      const nome = item.usuarios?.name || `Usuário Desconhecido (${item.usuario_id})`;
-      const totalMinutos = item.total || 0;
-      const horas = Math.floor(totalMinutos / 60);
-      const min = totalMinutos % 60;
+    ranking.forEach(([id, minutos], index) => {
+      const nome = mapaNomes[id] || `Usuário (${id})`;
+      const horas = Math.floor(minutos / 60);
+      const min = minutos % 60;
       const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${min}min`;
 
       let medalha = '';
-      if (posicao === 1) medalha = '🥇';
-      else if (posicao === 2) medalha = '🥈';
-      else if (posicao === 3) medalha = '🥉';
+      if (index === 0) medalha = '🥇';
+      else if (index === 1) medalha = '🥈';
+      else if (index === 2) medalha = '🥉';
 
       const li = document.createElement('li');
       li.innerHTML = `
-        <span>${medalha} ${posicao}º <strong>${nome}</strong></span>
+        <span>${medalha} ${index + 1}º <strong>${nome}</strong></span>
         <span>⏱️ ${tempoTexto}</span>
       `;
       rankingList.appendChild(li);
@@ -595,6 +606,7 @@ async function mostrarRanking() {
     rankingList.innerHTML = '<li>Erro inesperado ao carregar ranking.</li>';
   }
 }
+
 const tabButtons = document.querySelectorAll(".tab-auth");
 const tabContents = document.querySelectorAll(".tab-content");
 
