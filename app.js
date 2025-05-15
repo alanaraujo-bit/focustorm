@@ -151,6 +151,10 @@ async function verificarLogin() {
   const user = userResponse.data.user;
   await registrarNomeUsuario();
 
+  // Exibir nome do usuário
+  const nomeUsuario = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário";
+  document.getElementById('usuario-logado').textContent = `Bem-vindo, ${nomeUsuario}`;
+
   // Tudo certo, mostra interface principal
   authContainer.classList.add("hidden");
   document.getElementById("menu-topo").classList.remove("hidden");
@@ -200,7 +204,6 @@ function updateDisplay() {
     }
   }
 }
-
 
 function startTimer() {
   if (isRunning) return;
@@ -314,6 +317,7 @@ function renderizarGraficoFoco(dados, labels) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       scales: {
         y: {
           beginAtZero: true,
@@ -330,7 +334,18 @@ function renderizarGraficoFoco(dados, labels) {
           title: { display: true, text: 'Horas', color: '#ccc' }
         },
         x: {
-          ticks: { color: '#ccc' }
+          ticks: {
+            color: '#ccc',
+            maxRotation: 45,
+            minRotation: 45,
+            callback: (value, index) => {
+              // Mostrar apenas alguns rótulos para evitar sobreposição no celular
+              if (window.innerWidth <= 768 && index % 2 !== 0) return '';
+              const label = labels[index];
+              // Formatar a data para ser mais curta (ex.: "11/05")
+              return label.split('/').slice(0, 2).join('/');
+            }
+          }
         }
       },
       plugins: {
@@ -386,34 +401,33 @@ async function renderizarGrafico(periodo = 'semana') {
     }
   });
 
- if (periodo === 'semana') {
-  const diasSemana = [];
-  const hoje = new Date();
-  const diaSemana = hoje.getDay(); // 0 = domingo
-  const inicioSemana = new Date(hoje);
-  inicioSemana.setDate(hoje.getDate() - diaSemana);
+  if (periodo === 'semana') {
+    const diasSemana = [];
+    const hoje = new Date();
+    const diaSemana = hoje.getDay(); // 0 = domingo
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - diaSemana);
 
-  for (let i = 0; i < 7; i++) {
-    const data = new Date(inicioSemana);
-    data.setDate(inicioSemana.getDate() + i);
-    const label = data.toLocaleDateString('pt-BR');
-    diasSemana.push(label);
+    for (let i = 0; i < 7; i++) {
+      const data = new Date(inicioSemana);
+      data.setDate(inicioSemana.getDate() + i);
+      const label = data.toLocaleDateString('pt-BR');
+      diasSemana.push(label);
+    }
+
+    // ⚠️ Aqui está o segredo: garantir que os labels batam exatamente com os dados
+    const valores = diasSemana.map(dia => {
+      const [dd, mm, aaaa] = dia.split('/');
+      const diaFormatado = `${dd}/${mm}/${aaaa}`;
+      return dadosPorDia[diaFormatado] || 0;
+    });
+
+    renderizarGraficoFoco(valores, diasSemana);
   }
-
-  // ⚠️ Aqui está o segredo: garantir que os labels batam exatamente com os dados
-  const valores = diasSemana.map(dia => {
-    const [dd, mm, aaaa] = dia.split('/');
-    const diaFormatado = `${dd}/${mm}/${aaaa}`;
-    return dadosPorDia[diaFormatado] || 0;
-  });
-
-  renderizarGraficoFoco(valores, diasSemana);
-}
 
   const valores = labels.map(dia => dadosPorDia[dia]);
   renderizarGraficoFoco(valores, labels);
 }
-
 
 async function atualizarResumo() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -603,7 +617,6 @@ async function mostrarRanking() {
       `;
       rankingList.appendChild(li);
     });
-
   } catch (err) {
     console.error('Erro inesperado ao carregar ranking:', err);
     rankingList.innerHTML = '<li>Erro inesperado ao carregar ranking.</li>';
@@ -681,40 +694,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLimparFiltro = document.getElementById('btn-limpar-filtro');
   const btnTipoGrafico = document.getElementById('btn-tipo-grafico');
   const logoutBtn = document.getElementById('logout-btn');
-const skipBreakBtn = document.getElementById('skip-break-btn');
-if (skipBreakBtn) {
-  skipBreakBtn.addEventListener('click', pularPausa);
-}
-
-function pularPausa() {
-  if (!isFocusTime) {
-    clearInterval(timer);
-    isRunning = false;
-    isFocusTime = true;
-    remainingTime = parseInt(focusInput.value) * 60;
-    updateDisplay();
-    atualizarBotoes('inicio');
-    alert('⏭️ Pausa pulada! Hora de focar!');
+  const skipBreakBtn = document.getElementById('skip-break-btn');
+  if (skipBreakBtn) {
+    skipBreakBtn.addEventListener('click', pularPausa);
   }
-}
 
+  function pularPausa() {
+    if (!isFocusTime) {
+      clearInterval(timer);
+      isRunning = false;
+      isFocusTime = true;
+      remainingTime = parseInt(focusInput.value) * 60;
+      updateDisplay();
+      atualizarBotoes('inicio');
+      alert('⏭️ Pausa pulada! Hora de focar!');
+    }
+  }
 
   focusInput.addEventListener('input', () => {
-  if (!isRunning && isFocusTime) {
-    remainingTime = parseInt(focusInput.value) * 60;
-    updateDisplay();
-  }
-});
+    if (focusInput.value < 1) focusInput.value = 1; // Validação para evitar valores inválidos
+    if (!isRunning && isFocusTime) {
+      remainingTime = parseInt(focusInput.value) * 60;
+      updateDisplay();
+    }
+  });
 
-breakInput.addEventListener('input', () => {
-  if (!isRunning && !isFocusTime) {
-    remainingTime = parseInt(breakInput.value) * 60;
-    updateDisplay();
-    document.getElementById('skip-break-btn').classList.toggle('hidden', isFocusTime || !isRunning);
-
-  }
-});
-
+  breakInput.addEventListener('input', () => {
+    if (breakInput.value < 1) breakInput.value = 1; // Validação para evitar valores inválidos
+    if (!isRunning && !isFocusTime) {
+      remainingTime = parseInt(breakInput.value) * 60;
+      updateDisplay();
+      document.getElementById('skip-break-btn').classList.toggle('hidden', isFocusTime || !isRunning);
+    }
+  });
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {

@@ -20,7 +20,6 @@ body {
   transition: opacity 0.1s ease-in;
 }
 
-
 body.ready {
   opacity: 1;
 }
@@ -370,13 +369,6 @@ h1 {
   font-size: 1rem;
 }
 
-#contador-reset {
-  margin-top: 1rem;
-  font-size: 14px;
-  color: #00ffc3;
-  text-align: center;
-}
-
 .lista-ranking {
   list-style: none;
   padding: 0;
@@ -543,61 +535,6 @@ h1 {
   text-decoration: underline;
 }
 
-@media (max-width: 768px) {
-  body {
-    padding: 0.5rem;
-  }
-
-  .container,
-  .auth-container {
-    width: 95%;
-    padding: 1rem;
-    max-width: none;
-    margin: 1rem auto;
-  }
-
-  .timer-display {
-    font-size: 3rem;
-    text-align: center;
-  }
-
-  .timer-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .timer-buttons button {
-    width: 100%;
-    font-size: 1.1rem;
-  }
-
-  nav.menu-topo {
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
-  nav.menu-topo .nav-btn {
-    width: 100%;
-    font-size: 1rem;
-  }
-
-  canvas {
-    max-width: 100% !important;
-    height: auto !important;
-  }
-
-  .summary-cards {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .summary-cards .card {
-    text-align: center;
-  }
-}
-
 .circle-container {
   position: relative;
   width: 160px;
@@ -680,6 +617,7 @@ h1 {
 #reset-btn:hover {
   background-color: #dc2626;
 }
+
 #skip-break-btn {
   background-color: #38bdf8;
   color: white;
@@ -688,95 +626,117 @@ h1 {
 #skip-break-btn:hover {
   background-color: #0ea5e9;
 }
-body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  padding: 20px;
-  margin: 0;
-  min-height: 100vh;
-  background: linear-gradient(to bottom, #0f172a, #1e293b);
-  font-family: 'Segoe UI', sans-serif;
-}
-.card-historico {
-  background-color: #1e293b;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 20px;
-}
 
-.card-historico h2 {
-  color: white;
-  text-align: center;
-  margin-bottom: 15px;
-}
+/* Media Query para Telas Menores (Celular) */
+@media (max-width: 768px) {
+  body {
+    padding: 0.5rem;
+  }
 
-.card-historico .metricas {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  text-align: center;
-}
+  .container,
+  .auth-container {
+    width: 95%;
+    padding: 1rem;
+    margin: 0.5rem auto;
+  }
 
-.card-historico .metrica {
-  background-color: #334155;
-  border-radius: 10px;
-  padding: 10px;
-  color: #67e8f9;
-  font-size: 1.3rem;
-}
-.filtro-tempo {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin: 15px 0;
-}
+  .timer-display {
+    font-size: 3rem;
+    text-align: center;
+  }
 
-.filtro-tempo button {
-  background-color: #475569;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  padding: 6px 12px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
+  .timer-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-.filtro-tempo button.active {
-  background-color: #0ea5e9;
-}
-.historico-detalhado {
-  background-color: #1e293b;
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-  max-width: 400px;
-  width: 100%;
-}
+  .timer-buttons button {
+    width: 100%;
+    font-size: 1.1rem;
+  }
 
-.historico-detalhado ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  max-height: 300px;
-  overflow-y: auto;
-}
+  /* Menu de Navegação */
+  nav.menu-topo {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem auto;
+    width: 100%;
+    max-width: 300px; /* Centraliza e limita a largura */
+  }
 
-.historico-detalhado li {
-  background-color: #334155;
-  color: white;
-  margin: 6px 0;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-.grafico-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-  overflow-x: auto;
+  nav.menu-topo .nav-btn {
+    width: 100%;
+    font-size: 0.9rem;
+    padding: 0.6rem;
+  }
+
+  /* Histórico - Tabs */
+  .history-tabs {
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .history-tab {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    flex: 1;
+    max-width: 150px;
+  }
+
+  /* Histórico - Resumo */
+  .summary-cards {
+    flex-direction: row;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .summary-cards .card {
+    text-align: center;
+    min-width: 90px;
+    max-width: 110px;
+    padding: 0.8rem;
+  }
+
+  .card strong {
+    font-size: 1.5rem;
+  }
+
+  .card span {
+    font-size: 0.75rem;
+  }
+
+  /* Filtros de Período e Gráfico */
+  .filter-period {
+    flex-direction: row;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-period {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    flex: 1;
+    max-width: 90px;
+  }
+
+  .graph-controls {
+    margin-top: 0.5rem;
+  }
+
+  #btn-tipo-grafico {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  /* Gráfico */
+  canvas {
+    max-width: 100% !important;
+    height: 200px !important;
+  }
+
+  .graph-container {
+    padding: 0.5rem;
+  }
 }
