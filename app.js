@@ -3,23 +3,13 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 const authContainer = document.getElementById('auth-container');
-const loginBtn = document.getElementById('login-btn');
-const registerBtn = document.getElementById('register-btn');
-const inputName = document.getElementById('auth-name');
-const inputPassword = document.getElementById('auth-password');
-const logoutBtn = document.getElementById('logout-btn');
-const usuarioNomeSpan = document.getElementById('usuario-logado');
 const timerDisplay = document.getElementById('timer-display');
 const focusInput = document.getElementById('focus-time');
 const breakInput = document.getElementById('break-time');
-const startBtn = document.getElementById('start-btn');
-const pauseBtn = document.getElementById('pause-btn');
-const resetBtn = document.getElementById('reset-btn');
 const listaHistorico = document.getElementById('lista-historico');
 const dataInicio = document.getElementById('data-inicio');
 const dataFim = document.getElementById('data-fim');
 const rankingList = document.getElementById('ranking-list');
-const btnFiltroHistorico = document.getElementById('btn-filtrar-historico');
 const valorTotalFiltrado = document.getElementById('valor-total-filtrado');
 const cardTotalFiltrado = document.getElementById('card-total-filtrado');
 
@@ -30,15 +20,14 @@ let remainingTime = 0;
 let tipoGraficoAtual = 'bar';
 
 async function registrarNomeUsuario() {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     console.warn("Usuário não autenticado ao tentar registrar.");
     return;
   }
 
   console.log("Tentando registrar:", user.id);
 
-  // Buscar usuário SEM usar .single() — evita erro se não existir
   const { data: existente, error: erroBusca } = await supabase
     .from('usuarios')
     .select('*')
@@ -72,68 +61,112 @@ async function registrarNomeUsuario() {
   }
 }
 
+function mostrarTelaLogin() {
+  authContainer.innerHTML = `
+    <h2>ENTRAR</h2>
+    <div class="input-group">
+      <i class="fas fa-envelope input-icon"></i>
+      <input type="text" id="login-name" placeholder="E-mail" />
+    </div>
+    <div class="input-group">
+      <div class="senha-container">
+        <i class="fas fa-lock input-icon"></i>
+        <input type="password" id="login-password" placeholder="Senha" />
+        <button type="button" id="toggleSenhaLogin"><i class="fas fa-eye"></i></button>
+      </div>
+    </div>
+    <div class="options">
+      <label><input type="checkbox" id="remember-me" /> Lembre-me</label>
+      <a href="#" class="forgot-password">Esqueceu a senha?</a>
+    </div>
+    <button class="btn-auth green" id="login-btn">ENTRAR</button>
+    <div class="divider"><span>OU</span></div>
+    <button class="btn-auth google" id="google-login"><i class="fab fa-google"></i> Entrar com Google</button>
+    <p class="signup-prompt">Não tem uma conta? <a href="#" id="register-link">Cadastre-se</a></p>
+  `;
+  authContainer.classList.remove("hidden");
+  document.getElementById("menu-topo").classList.add("hidden");
+  document.getElementById("section-pomodoro").classList.add("hidden");
+  document.getElementById("section-historico").classList.add("hidden");
+  document.getElementById("section-ranking").classList.add("hidden");
+
+  // Reaplica os eventos depois de injetar o HTML
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('login-name').value;
+    const senha = document.getElementById('login-password').value;
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (loginError) alert("Erro ao fazer login: " + loginError.message);
+    else {
+      await registrarNomeUsuario();
+      verificarLogin();
+    }
+  });
+
+  document.getElementById('toggleSenhaLogin').addEventListener('click', () => {
+    const loginPass = document.getElementById('login-password');
+    loginPass.type = loginPass.type === "password" ? "text" : "password";
+    const eyeIcon = document.getElementById('toggleSenhaLogin').querySelector('i');
+    eyeIcon.classList.toggle('fa-eye');
+    eyeIcon.classList.toggle('fa-eye-slash');
+  });
+
+  document.getElementById('google-login').addEventListener('click', async () => {
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          prompt: 'select_account',
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        }
+      });
+      if (oauthError) alert("Erro ao logar com Google: " + oauthError.message);
+      else {
+        const checarUsuario = setInterval(async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            clearInterval(checarUsuario);
+            await registrarNomeUsuario();
+            verificarLogin();
+          }
+        }, 1000);
+      }
+    } catch (err) {
+      alert("Erro inesperado: " + err.message);
+    }
+  });
+
+  // Adiciona a classe ready para exibir a tela de login
+  document.body.classList.add("ready");
+}
 
 async function verificarLogin() {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    authContainer.style.display = 'block';
+  const userResponse = await supabase.auth.getUser();
+
+  if (!userResponse || !userResponse.data || !userResponse.data.user) {
+    mostrarTelaLogin();
     return;
   }
 
+  const user = userResponse.data.user;
   await registrarNomeUsuario();
 
-  authContainer.style.display = 'none';
-  document.getElementById("menu-topo").style.display = "flex";
-  document.getElementById("section-pomodoro").style.display = "block";
-  document.getElementById("section-historico").style.display = "none";
-  document.getElementById("section-ranking").style.display = "none";
+  // Tudo certo, mostra interface principal
+  authContainer.classList.add("hidden");
+  document.getElementById("menu-topo").classList.remove("hidden");
+  document.getElementById("section-pomodoro").classList.remove("hidden");
+  document.getElementById("section-historico").classList.add("hidden");
+  document.getElementById("section-ranking").classList.add("hidden");
+
   mostrarHistorico();
   mostrarRanking();
   renderizarGrafico('semana');
   resetTimer();
   atualizarResumo();
+
+  // Adiciona a classe ready para exibir o conteúdo principal
+  document.body.classList.add("ready");
 }
-
-loginBtn.addEventListener('click', async () => {
-  const email = document.getElementById('login-name').value;
-  const senha = document.getElementById('login-password').value;
-
-  const { data, error: loginError } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: senha
-  });
-
-  if (loginError) {
-    alert("Erro ao fazer login: " + loginError.message);
-  } else {
-    await registrarNomeUsuario();
-    verificarLogin();
-  }
-});
-
-registerBtn.addEventListener('click', async () => {
-  const email = document.getElementById('register-email').value;
-  const senha = document.getElementById('register-password').value;
-
-  const { data, error: signUpError } = await supabase.auth.signUp({
-    email: email,
-    password: senha
-  });
-
-  if (signUpError) {
-    alert("Erro ao cadastrar: " + signUpError.message);
-  } else {
-    alert("Cadastro feito! Verifique seu e-mail para confirmar.");
-
-    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-    if (loginError) {
-      alert("Erro ao logar após cadastro: " + loginError.message);
-    } else {
-      await registrarNomeUsuario();
-      await verificarLogin();
-    }
-  }
-});
 
 function formatTime(seconds) {
   const m = String(Math.floor(seconds / 60)).padStart(2, '0');
@@ -143,7 +176,31 @@ function formatTime(seconds) {
 
 function updateDisplay() {
   timerDisplay.textContent = formatTime(remainingTime);
+
+  const totalTime = isFocusTime
+    ? parseInt(focusInput.value) * 60
+    : parseInt(breakInput.value) * 60;
+  const progress = remainingTime / totalTime;
+
+  const circle = document.querySelector('.ring-progress');
+  const radius = circle.r.baseVal.value;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * progress;
+  circle.style.strokeDashoffset = offset;
+
+  circle.style.stroke = isFocusTime ? '#00ffc3' : '#3b82f6';
+
+  // 👇 Aqui está o controle do botão "Pular Pausa"
+  const skipBtn = document.getElementById('skip-break-btn');
+  if (skipBtn) {
+    if (!isFocusTime && isRunning) {
+      skipBtn.classList.remove('hidden');
+    } else {
+      skipBtn.classList.add('hidden');
+    }
+  }
 }
+
 
 function startTimer() {
   if (isRunning) return;
@@ -174,6 +231,7 @@ function startTimer() {
 function pauseTimer() {
   clearInterval(timer);
   isRunning = false;
+  atualizarBotoes('pausado');
 }
 
 function resetTimer() {
@@ -185,10 +243,10 @@ function resetTimer() {
 }
 
 async function mostrarHistorico(filtro = 'todos') {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-  const { data, error: fetchError } = await supabase
+  const { data: sessoes, error: fetchError } = await supabase
     .from('sessoes1')
     .select('*')
     .eq('usuario_id', user.id)
@@ -199,7 +257,7 @@ async function mostrarHistorico(filtro = 'todos') {
     return;
   }
 
-  let filtrado = [...data];
+  let filtrado = [...sessoes];
   if (filtro === 'personalizado') {
     const inicio = new Date(dataInicio.value);
     const fim = new Date(dataFim.value);
@@ -213,27 +271,27 @@ async function mostrarHistorico(filtro = 'todos') {
   listaHistorico.innerHTML = '';
   if (filtrado.length === 0) {
     listaHistorico.innerHTML = '<li>Nenhuma sessão encontrada.</li>';
-    cardTotalFiltrado.style.display = 'none';
+    cardTotalFiltrado.classList.add("hidden");
     return;
   }
 
-  let totalFocoMin = 0;
+  let totalFocoM = 0;
   filtrado.forEach(sessao => {
     const dataFormatada = new Date(sessao.data).toLocaleDateString('pt-BR');
     const item = document.createElement('li');
     item.innerHTML = `
-      ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} min
+      ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} m
       <button onclick="editarSessao('${sessao.id}', ${sessao.duracao})">✏️</button>
     `;
     listaHistorico.appendChild(item);
 
-    totalFocoMin += sessao.duracao;
+    totalFocoM += sessao.duracao;
   });
 
-  const horas = Math.floor(totalFocoMin / 60);
-  const minutos = totalFocoMin % 60;
+  const horas = Math.floor(totalFocoM / 60);
+  const minutos = totalFocoM % 60;
   valorTotalFiltrado.textContent = `${horas}:${String(minutos).padStart(2, '0')}`;
-  cardTotalFiltrado.style.display = 'flex';
+  cardTotalFiltrado.classList.remove("hidden");
 }
 
 function renderizarGraficoFoco(dados, labels) {
@@ -263,10 +321,10 @@ function renderizarGraficoFoco(dados, labels) {
             color: '#ccc',
             stepSize: 1,
             callback: value => {
-              const totalMinutes = Math.floor(value);
-              const hours = Math.floor(totalMinutes / 60);
-              const minutes = totalMinutes % 60;
-              return `${hours}h ${minutes}min`;
+              const totalM = Math.floor(value);
+              const hours = Math.floor(totalM / 60);
+              const minutes = totalM % 60;
+              return `${hours}h ${minutes}m`;
             }
           },
           title: { display: true, text: 'Horas', color: '#ccc' }
@@ -280,10 +338,10 @@ function renderizarGraficoFoco(dados, labels) {
         tooltip: {
           callbacks: {
             label: context => {
-              const totalMinutes = context.parsed.y;
-              const hours = Math.floor(totalMinutes / 60);
-              const minutes = Math.round(totalMinutes % 60);
-              return `${hours}h ${minutes}min`;
+              const totalM = context.parsed.y;
+              const hours = Math.floor(totalM / 60);
+              const minutes = Math.round(totalM % 60);
+              return `${hours}h ${minutes}m`;
             }
           }
         }
@@ -293,10 +351,10 @@ function renderizarGraficoFoco(dados, labels) {
 }
 
 async function renderizarGrafico(periodo = 'semana') {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-  const { data, error: fetchError } = await supabase
+  const { data: sessoes, error: fetchError } = await supabase
     .from('sessoes1')
     .select('*')
     .eq('usuario_id', user.id);
@@ -319,7 +377,7 @@ async function renderizarGrafico(periodo = 'semana') {
   }
 
   const dadosPorDia = {};
-  data.forEach(sessao => {
+  sessoes.forEach(sessao => {
     const dataSessao = new Date(sessao.data);
     if (dataSessao >= inicio) {
       const dia = dataSessao.toLocaleDateString('pt-BR');
@@ -328,79 +386,40 @@ async function renderizarGrafico(periodo = 'semana') {
     }
   });
 
-  const labels = Object.keys(dadosPorDia).sort((a, b) => {
-    const [d1, m1, y1] = a.split('/').map(Number);
-    const [d2, m2, y2] = b.split('/').map(Number);
-    return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
+ if (periodo === 'semana') {
+  const diasSemana = [];
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0 = domingo
+  const inicioSemana = new Date(hoje);
+  inicioSemana.setDate(hoje.getDate() - diaSemana);
+
+  for (let i = 0; i < 7; i++) {
+    const data = new Date(inicioSemana);
+    data.setDate(inicioSemana.getDate() + i);
+    const label = data.toLocaleDateString('pt-BR');
+    diasSemana.push(label);
+  }
+
+  // ⚠️ Aqui está o segredo: garantir que os labels batam exatamente com os dados
+  const valores = diasSemana.map(dia => {
+    const [dd, mm, aaaa] = dia.split('/');
+    const diaFormatado = `${dd}/${mm}/${aaaa}`;
+    return dadosPorDia[diaFormatado] || 0;
   });
+
+  renderizarGraficoFoco(valores, diasSemana);
+}
+
   const valores = labels.map(dia => dadosPorDia[dia]);
   renderizarGraficoFoco(valores, labels);
 }
 
-startBtn.addEventListener('click', startTimer);
-pauseBtn.addEventListener('click', pauseTimer);
-resetBtn.addEventListener('click', resetTimer);
-btnFiltroHistorico.addEventListener('click', () => mostrarHistorico('personalizado'));
-
-document.querySelectorAll('.btn-period').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.btn-period').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const periodo = btn.dataset.period;
-    renderizarGrafico(periodo);
-  });
-});
-
-document.getElementById('btn-tipo-grafico').addEventListener('click', () => {
-  tipoGraficoAtual = tipoGraficoAtual === 'bar' ? 'line' : 'bar';
-  document.getElementById('btn-tipo-grafico').textContent = `Tipo: ${tipoGraficoAtual === 'bar' ? 'Barra' : 'Linha'}`;
-  const periodoAtual = document.querySelector('.btn-period.active')?.dataset.period || 'semana';
-  renderizarGrafico(periodoAtual);
-});
-
-const navButtons = document.querySelectorAll(".nav-btn");
-const sections = {
-  pomodoro: document.getElementById("section-pomodoro"),
-  historico: document.getElementById("section-historico"),
-  ranking: document.getElementById("section-ranking"),
-};
-
-navButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.section;
-    Object.keys(sections).forEach(key => {
-      sections[key].style.display = key === target ? "block" : "none";
-    });
-    navButtons.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    if (target === "historico") {
-      mostrarHistorico();
-      renderizarGrafico("semana");
-      atualizarResumo();
-    }
-if (target === "ranking") {
-  carregarRankingCompleto(); // ✅
-}
-
-  });
-});
-
-document.querySelectorAll('.history-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset.tab;
-    document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    document.querySelectorAll('.history-tab-content').forEach(c => c.style.display = 'none');
-    document.getElementById(`history-${target}`).style.display = 'block';
-  });
-});
 
 async function atualizarResumo() {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-  const { data, error: fetchError } = await supabase
+  const { data: sessoes, error: fetchError } = await supabase
     .from('sessoes1')
     .select('*')
     .eq('usuario_id', user.id);
@@ -411,21 +430,21 @@ async function atualizarResumo() {
   }
 
   const diasUnicos = new Set();
-  let totalMinutos = 0;
+  let totalM = 0;
   const diasComFoco = {};
 
-  data.forEach(sessao => {
+  sessoes.forEach(sessao => {
     const dataSessao = new Date(sessao.data);
     const dataFormatada = dataSessao.toLocaleDateString('pt-BR');
 
-    totalMinutos += sessao.duracao;
+    totalM += sessao.duracao;
     diasUnicos.add(dataFormatada);
     diasComFoco[dataFormatada] = true;
   });
 
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
-  document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}min`;
+  const horas = Math.floor(totalM / 60);
+  const minutos = totalM % 60;
+  document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}m`;
 
   document.getElementById('days-active').textContent = diasUnicos.size;
 
@@ -469,7 +488,7 @@ function atualizarCronometroReset() {
   const segundos = Math.floor((diff / 1000) % 60);
 
   document.getElementById('contador-reset').textContent =
-    `⏳ Ranking reseta em: ${dias}d ${horas}h ${minutos}min ${segundos}s`;
+    `⏳ Ranking reseta em: ${dias}d ${horas}h ${minutos}m ${segundos}s`;
 }
 
 setInterval(atualizarCronometroReset, 1000);
@@ -492,7 +511,6 @@ async function carregarRankingCompleto() {
   }
 }
 
-
 function carregarMaisRanking() {
   const inicio = paginaRanking * tamanhoPagina;
   const fim = inicio + tamanhoPagina;
@@ -508,8 +526,8 @@ function carregarMaisRanking() {
     else if (posicao === 3) medalha = '🥉';
 
     const horas = Math.floor(minutos / 60);
-    const min = minutos % 60;
-    const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${min}min`;
+    const m = minutos % 60;
+    const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${m}m`;
 
     li.innerHTML = `
       <span>${medalha} ${posicao}º <strong>${usuario}</strong></span>
@@ -530,17 +548,9 @@ document.getElementById('ranking-list').addEventListener('scroll', (e) => {
 
 async function mostrarRanking() {
   try {
-    /*const { data: sessoes, error: erroSessoes } = await supabase
+    const { data: sessoes, error: erroSessoes } = await supabase
       .from('sessoes1')
       .select('*');
-      console.log(data,sessoes)*/
-
-      const test = await supabase
-      .from('sessoes1')
-      .select('*');
-      console.log(test)
-alert(test)
-      return
 
     if (erroSessoes || !sessoes) {
       console.error('Erro ao buscar sessões:', erroSessoes?.message);
@@ -575,11 +585,11 @@ alert(test)
     const ranking = Object.entries(totais).sort((a, b) => b[1] - a[1]);
 
     rankingList.innerHTML = '';
-    ranking.forEach(([usuarioId, totalMinutos], index) => {
+    ranking.forEach(([usuarioId, totalM], index) => {
       const nome = mapaNomes[usuarioId] || `Usuário (${usuarioId})`;
-      const horas = Math.floor(totalMinutos / 60);
-      const minutos = totalMinutos % 60;
-      const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${minutos}min`;
+      const horas = Math.floor(totalM / 60);
+      const minutos = totalM % 60;
+      const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${minutos}m`;
 
       let medalha = '';
       if (index === 0) medalha = '🥇';
@@ -600,41 +610,15 @@ alert(test)
   }
 }
 
-const tabButtons = document.querySelectorAll(".tab-auth");
-const tabContents = document.querySelectorAll(".tab-content");
-
-tabButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    tabButtons.forEach(b => b.classList.remove("active"));
-    tabContents.forEach(c => c.style.display = "none");
-    btn.classList.add("active");
-    document.getElementById(`tab-${btn.dataset.tab}`).style.display = "block";
-  });
-});
-
-const toggleSenhaLogin = document.getElementById("toggleSenhaLogin");
-const loginPass = document.getElementById("login-password");
-toggleSenhaLogin.addEventListener("click", () => {
-  loginPass.type = loginPass.type === "password" ? "text" : "password";
-});
-
-const toggleSenhaRegister = document.getElementById("toggleSenhaRegister");
-const registerPass = document.getElementById("register-password");
-toggleSenhaRegister.addEventListener("click", () => {
-  registerPass.type = registerPass.type === "password" ? "text" : "password";
-});
-
 async function salvarSessao(tipo, duracao) {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error("Usuário não autenticado:", userError?.message);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error("Usuário não autenticado.");
     return;
   }
 
-  // Garante que o usuário está registrado
   await registrarNomeUsuario();
 
-  // Confirma se ele foi registrado de fato
   const { data: usuarioExiste } = await supabase
     .from('usuarios')
     .select('id')
@@ -646,7 +630,6 @@ async function salvarSessao(tipo, duracao) {
     return;
   }
 
-  // Tenta salvar a sessão
   const { error: insertError } = await supabase.from('sessoes1').insert([{
     usuario_id: user.id,
     duracao: duracao,
@@ -661,50 +644,12 @@ async function salvarSessao(tipo, duracao) {
   }
 }
 
-
-const checarUsuario = setInterval(async () => {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (user) {
-    clearInterval(checarUsuario);
-    await registrarNomeUsuario();
-  }
-}, 1000);
-
-supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
-  if (user) {
-    const email = user.email;
-    const nome = user.user_metadata?.full_name || "Usuário";
-    const spanUser = document.getElementById("usuario-logado");
-    if (spanUser) {
-      spanUser.textContent = `👤 ${nome} (${email})`;
-    }
-    document.getElementById("auth-container").style.display = "none";
-    document.getElementById("menu-topo").style.display = "flex";
-    document.getElementById("section-pomodoro").style.display = "block";
-  } else {
-    document.getElementById("auth-container").style.display = "block";
-    document.getElementById("menu-topo").style.display = "none";
-    document.getElementById("section-pomodoro").style.display = "none";
-  }
-});
-
-document.getElementById("logout-btn").addEventListener("click", async () => {
-  const { error: logoutError } = await supabase.auth.signOut();
-  if (logoutError) {
-    console.error("Erro ao deslogar:", logoutError.message);
-  } else {
-    document.getElementById("auth-container").style.display = "block";
-    document.getElementById("menu-topo").style.display = "none";
-    document.getElementById("section-pomodoro").style.display = "none";
-  }
-});
-
 async function editarSessao(id, duracaoAtual) {
-  const novoValor = prompt(`Editar duração (minutos):`, duracaoAtual);
+  const novoValor = prompt(`Editar duração (m):`, duracaoAtual);
   const novaDuracao = parseInt(novoValor);
 
   if (!isNaN(novaDuracao) && novaDuracao >= 0) {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return alert("Usuário não autenticado!");
 
     const { error: erroUpdate } = await supabase
@@ -725,46 +670,246 @@ async function editarSessao(id, duracaoAtual) {
   }
 }
 
-document.getElementById("google-register").addEventListener("click", async () => {
-  const { error: oauthError } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      prompt: 'select_account',
-      redirectTo: 'https://focustorm-th3y.vercel.app'
-    }
-  });
-  if (oauthError) {
-    console.error("Erro ao registrar com Google:", oauthError.message);
+document.addEventListener('DOMContentLoaded', () => {
+  verificarLogin();
+
+  const startBtn = document.getElementById('start-btn');
+  const pauseBtn = document.getElementById('pause-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const resumeBtn = document.getElementById('resume-btn');
+  const btnFiltroHistorico = document.getElementById('btn-filtrar-historico');
+  const btnLimparFiltro = document.getElementById('btn-limpar-filtro');
+  const btnTipoGrafico = document.getElementById('btn-tipo-grafico');
+  const logoutBtn = document.getElementById('logout-btn');
+const skipBreakBtn = document.getElementById('skip-break-btn');
+if (skipBreakBtn) {
+  skipBreakBtn.addEventListener('click', pularPausa);
+}
+
+function pularPausa() {
+  if (!isFocusTime) {
+    clearInterval(timer);
+    isRunning = false;
+    isFocusTime = true;
+    remainingTime = parseInt(focusInput.value) * 60;
+    updateDisplay();
+    atualizarBotoes('inicio');
+    alert('⏭️ Pausa pulada! Hora de focar!');
+  }
+}
+
+
+  focusInput.addEventListener('input', () => {
+  if (!isRunning && isFocusTime) {
+    remainingTime = parseInt(focusInput.value) * 60;
+    updateDisplay();
   }
 });
 
-document.getElementById("google-login").addEventListener("click", async () => {
-  await supabase.auth.signOut();
+breakInput.addEventListener('input', () => {
+  if (!isRunning && !isFocusTime) {
+    remainingTime = parseInt(breakInput.value) * 60;
+    updateDisplay();
+    document.getElementById('skip-break-btn').classList.toggle('hidden', isFocusTime || !isRunning);
 
-  const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      prompt: 'select_account',
-      redirectTo: 'https://focustorm-th3y.vercel.app'
-    }
-  });
+  }
+});
 
-  if (oauthError) {
-    console.error("Erro ao logar com Google:", oauthError.message);
-  } else {
-    console.log("Redirecionando para login com Google...");
-    const checarUsuario = setInterval(async () => {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (user) {
-        clearInterval(checarUsuario);
-        await registrarNomeUsuario();
-        verificarLogin();
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      location.reload(); // Recarrega a página e volta para o login
+    });
+  }
+
+  if (startBtn) startBtn.addEventListener('click', () => { startTimer(); atualizarBotoes('focando'); });
+  if (pauseBtn) pauseBtn.addEventListener('click', () => { pauseTimer(); atualizarBotoes('pausado'); });
+  if (resumeBtn) resumeBtn.addEventListener('click', () => {
+    isRunning = true;
+    timer = setInterval(() => {
+      remainingTime--;
+      updateDisplay();
+      if (remainingTime <= 0) {
+        clearInterval(timer);
+        isRunning = false;
+        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+        salvarSessao(tipoAtual, duracao);
+        isFocusTime = !isFocusTime;
+        alert(isFocusTime ? 'Hora de focar!' : 'Hora de descansar!');
+        startTimer();
+        mostrarHistorico();
+        mostrarRanking();
+        renderizarGrafico("semana");
       }
     }, 1000);
+    atualizarBotoes('focando');
+  });
+  if (resetBtn) resetBtn.addEventListener('click', () => { resetTimer(); atualizarBotoes('inicio'); });
+  if (btnFiltroHistorico) btnFiltroHistorico.addEventListener('click', () => mostrarHistorico('personalizado'));
+  if (btnLimparFiltro) btnLimparFiltro.addEventListener('click', () => {
+    document.getElementById('data-inicio').value = '';
+    document.getElementById('data-fim').value = '';
+    mostrarHistorico();
+  });
+  if (btnTipoGrafico) btnTipoGrafico.addEventListener('click', () => {
+    tipoGraficoAtual = tipoGraficoAtual === 'bar' ? 'line' : 'bar';
+    btnTipoGrafico.textContent = `Tipo: ${tipoGraficoAtual === 'bar' ? 'Barra' : 'Linha'}`;
+    const periodoAtual = document.querySelector('.btn-period.active')?.dataset.period || 'semana';
+    renderizarGrafico(periodoAtual);
+  });
+
+  document.querySelectorAll('.btn-period').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.btn-period').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const periodo = btn.dataset.period;
+      renderizarGrafico(periodo);
+    });
+  });
+
+  // Botões de navegação
+  const navButtons = document.querySelectorAll(".nav-btn");
+  const sections = {
+    pomodoro: document.getElementById("section-pomodoro"),
+    historico: document.getElementById("section-historico"),
+    ranking: document.getElementById("section-ranking"),
+  };
+
+  navButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.section;
+      Object.keys(sections).forEach(key => {
+        if (key === target) {
+          sections[key].classList.remove("hidden");
+        } else {
+          sections[key].classList.add("hidden");
+        }
+      });
+      navButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      if (target === "historico") {
+        mostrarHistorico();
+        renderizarGrafico("semana");
+        atualizarResumo();
+      }
+      if (target === "ranking") {
+        carregarRankingCompleto();
+      }
+    });
+  });
+
+  // Abas do histórico
+  document.querySelectorAll('.history-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.history-tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById(`history-${target}`).classList.remove('hidden');
+    });
+  });
+
+  const registerLink = document.getElementById('register-link');
+  if (registerLink) {
+    registerLink.addEventListener('click', () => {
+      authContainer.innerHTML = `
+        <h2>Criar Conta</h2>
+        <div class="input-group">
+          <i class="fas fa-user input-icon"></i>
+          <input type="text" id="register-name" placeholder="Usuário" />
+        </div>
+        <div class="input-group">
+          <i class="fas fa-envelope input-icon"></i>
+          <input type="email" id="register-email" placeholder="E-mail" />
+        </div>
+        <div class="input-group">
+          <div class="senha-container">
+            <i class="fas fa-lock input-icon"></i>
+            <input type="password" id="register-password" placeholder="Senha" />
+            <button type="button" id="toggleSenhaRegister"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <button class="btn-auth green" id="register-btn">CADASTRAR</button>
+        <div class="divider">
+          <span>OU</span>
+        </div>
+        <button class="btn-auth google" id="google-register"><i class="fab fa-google"></i> Cadastrar com Google</button>
+        <p class="signup-prompt">Já tem uma conta? <a href="#" id="login-link">Entrar</a></p>
+      `;
+      document.getElementById('register-btn').addEventListener('click', async () => {
+        const email = document.getElementById('register-email').value;
+        const senha = document.getElementById('register-password').value;
+        const { error: signUpError } = await supabase.auth.signUp({ email, password: senha });
+        if (signUpError) {
+          alert("Erro ao cadastrar: " + signUpError.message);
+        } else {
+          alert("Cadastro feito! Verifique seu e-mail para confirmar.");
+          const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: senha });
+          if (loginError) {
+            alert("Erro ao logar após cadastro: " + loginError.message);
+          } else {
+            await registrarNomeUsuario();
+            verificarLogin();
+          }
+        }
+      });
+
+      document.getElementById('toggleSenhaRegister').addEventListener('click', () => {
+        const registerPass = document.getElementById('register-password');
+        registerPass.type = registerPass.type === "password" ? "text" : "password";
+        document.getElementById('toggleSenhaRegister').querySelector('i').classList.toggle('fa-eye');
+        document.getElementById('toggleSenhaRegister').querySelector('i').classList.toggle('fa-eye-slash');
+      });
+
+      document.getElementById('google-register').addEventListener('click', async () => {
+        try {
+          const { error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: window.location.origin,
+              prompt: 'select_account',
+              queryParams: { access_type: 'offline', prompt: 'consent' },
+            }
+          });
+          if (oauthError) {
+            console.error("Erro ao registrar com Google:", oauthError.message);
+            alert("Erro ao registrar com Google: " + oauthError.message);
+            return;
+          }
+          const checarUsuario = setInterval(async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              clearInterval(checarUsuario);
+              await registrarNomeUsuario();
+              verificarLogin();
+            }
+          }, 1000);
+        } catch (err) {
+          console.error("Erro inesperado no cadastro com Google:", err);
+          alert("Erro inesperado: " + err.message);
+        }
+      });
+
+      document.getElementById('login-link').addEventListener('click', () => {
+        verificarLogin();
+      });
+    });
   }
 });
-document.getElementById('btn-limpar-filtro').addEventListener('click', () => {
-  document.getElementById('data-inicio').value = '';
-  document.getElementById('data-fim').value = '';
-  mostrarHistorico(); // ✅ agora funciona
-});
+
+function atualizarBotoes(estado) {
+  const startBtn = document.getElementById('start-btn');
+  const pauseBtn = document.getElementById('pause-btn');
+  const resumeBtn = document.getElementById('resume-btn');
+  const resetBtn = document.getElementById('reset-btn');
+
+  if (!startBtn || !pauseBtn || !resumeBtn || !resetBtn) return;
+
+  startBtn.classList.toggle("hidden", estado !== 'inicio');
+  pauseBtn.classList.toggle("hidden", estado !== 'focando');
+  resumeBtn.classList.toggle("hidden", estado !== 'pausado');
+  resetBtn.classList.toggle("hidden", estado === 'inicio');
+}

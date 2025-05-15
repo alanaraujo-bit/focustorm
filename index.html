@@ -4,131 +4,103 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FocuStorm</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FocuStorm</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
 <body>
-  <!-- Login / Cadastro -->
-<section id="auth-container" class="auth-container">
-  <div class="tabs-auth">
-    <button class="tab-auth active" data-tab="login">Login</button>
-    <button class="tab-auth" data-tab="register">Cadastrar</button>
-  </div>
-
-  <div id="tab-login" class="tab-content">
-    <h2>Entrar no FocuStorm</h2>
-    <input type="text" id="login-name" placeholder="Usuário ou Email" />
-    <div class="senha-container">
-      <input type="password" id="login-password" placeholder="Senha" />
-      <button type="button" id="toggleSenhaLogin">👁️</button>
-    </div>
-    <button class="btn-auth green" id="login-btn">Entrar</button>
-    <button class="btn-auth google" id="google-login">Entrar com Google</button>
-    <a href="#" class="forgot-password">Esqueceu a senha?</a>
-  </div>
-
-  <div id="tab-register" class="tab-content" style="display: none;">
-    <h2>Criar Conta</h2>
-    <input type="text" id="register-name" placeholder="Usuário" />
-    <input type="email" id="register-email" placeholder="Email" />
-    <div class="senha-container">
-      <input type="password" id="register-password" placeholder="Senha" />
-      <button type="button" id="toggleSenhaRegister">👁️</button>
-    </div>
-    <button class="btn-auth green" id="register-btn">Cadastrar</button>
-    <button class="btn-auth google" id="google-register">Cadastrar com Google</button>
-  </div>
-</section>
+  <!-- Login -->
+  <section id="auth-container" class="auth-container"></section>
 
   <!-- MENU DE NAVEGAÇÃO -->
-  <nav id="menu-topo" class="menu-topo" style="display: none;">
+  <nav id="menu-topo" class="menu-topo hidden">
     <button class="nav-btn active" data-section="pomodoro">Pomodoro</button>
     <button class="nav-btn" data-section="historico">Histórico</button>
     <button class="nav-btn" data-section="ranking">Ranking</button>
   </nav>
 
   <!-- SEÇÃO: Pomodoro -->
-  <section id="section-pomodoro" class="container" style="display: none;">
+  <section id="section-pomodoro" class="container hidden">
     <div class="logout-area">
       <span id="usuario-logado"></span>
       <button id="logout-btn">Sair</button>
     </div>
-
     <h1>FocuStorm</h1>
-
     <div class="timer-settings">
       <label>Tempo de foco (min): <input type="number" id="focus-time" value="25" /></label>
       <label>Tempo de pausa (min): <input type="number" id="break-time" value="5" /></label>
     </div>
-
-    <div class="timer-display" id="timer-display">25:00</div>
-
+    <div class="circle-container">
+      <svg class="progress-ring" width="160" height="160">
+        <circle class="ring-bg" r="70" cx="80" cy="80" />
+        <circle class="ring-progress" r="70" cx="80" cy="80" />
+      </svg>
+      <div class="time-text" id="timer-display">25:00</div>
+    </div>
     <div class="timer-buttons">
       <button id="start-btn">Iniciar</button>
-      <button id="pause-btn">Pausar</button>
-      <button id="reset-btn">Resetar</button>
+      <button id="pause-btn" class="hidden">Pausar</button>
+      <button id="resume-btn" class="hidden">Retomar</button>
+      <button id="reset-btn" class="hidden">Resetar</button>
+      <button id="skip-break-btn" class="hidden">Pular Pausa</button>
     </div>
   </section>
 
   <!-- SEÇÃO: Histórico -->
-  <section id="section-historico" class="container" style="display: none;">
+  <section id="section-historico" class="container hidden">
     <h2>Histórico</h2>
     <div class="history-tabs">
       <button class="history-tab active" data-tab="summary">Resumo</button>
       <button class="history-tab" data-tab="details">Detalhado</button>
     </div>
-
     <!-- ABA RESUMO -->
-   <div id="history-summary" class="history-tab-content">
-  <div class="summary-cards">
-    <div class="card">
-      <strong id="total-focus">0</strong>
-      <span>Horas focadas</span>
+    <div id="history-summary" class="history-tab-content">
+      <div class="summary-cards">
+        <div class="card">
+          <strong id="total-focus">0</strong>
+          <span>Horas focadas</span>
+        </div>
+        <div class="card">
+          <strong id="days-active">0</strong>
+          <span>Dias ativos</span>
+        </div>
+        <div class="card">
+          <strong id="streak-days">0</strong>
+          <span>Sequência (dias)</span>
+        </div>
+      </div>
+      <div class="filter-period">
+        <button data-period="semana" class="btn-period active">Semana</button>
+        <button data-period="mes" class="btn-period">Mês</button>
+        <button data-period="ano" class="btn-period">Ano</button>
+        <div class="graph-controls">
+          <button id="btn-tipo-grafico">Tipo: Barra</button>
+        </div>
+      </div>
+      <div class="graph-container">
+        <canvas id="focus-graph"></canvas>
+      </div>
     </div>
-    <div class="card">
-      <strong id="days-active">0</strong>
-      <span>Dias ativos</span>
-    </div>
-    <div class="card">
-      <strong id="streak-days">0</strong>
-      <span>Sequência (dias)</span>
-    </div>
-  </div>
-
-  <!-- NOVO: Filtros para gráfico -->
-  <div class="filter-period">
-    <button data-period="semana" class="btn-period active">Semana</button>
-    <button data-period="mes" class="btn-period">Mês</button>
-    <button data-period="ano" class="btn-period">Ano</button>
-    <div class="graph-controls">
-  <button id="btn-tipo-grafico">Tipo: Barra</button>
-</div>
-
-  </div>
-
-  <!-- NOVO: Gráfico de colunas -->
-  <div class="graph-container">
-    <canvas id="focus-graph"></canvas>
-  </div>
-</div>
-
     <!-- ABA DETALHADO -->
-    <div id="history-details" class="history-tab-content" style="display: none;">
+    <div id="history-details" class="history-tab-content hidden">
       <div class="filter-container">
         <label>De: <input type="date" id="data-inicio" /></label>
         <label>Até: <input type="date" id="data-fim" /></label>
         <button id="btn-filtrar-historico">Filtrar</button>
-          <button id="btn-limpar-filtro">Limpar Filtro</button> <!-- NOVO -->
+        <button id="btn-limpar-filtro">Limpar Filtro</button>
       </div>
-
       <ul id="lista-historico" class="lista-historico"></ul>
-
-<div class="pagination-controls">
-  <button id="prev-page">Anterior</button>
-  <button id="next-page">Próxima</button>
-</div>
-
-      <!-- CARD TOTAL FILTRADO -->
-      <div id="card-total-filtrado" class="card" style="margin-top: 1rem; display: none;">
+      <div class="pagination-controls">
+        <button id="prev-page">Anterior</button>
+        <button id="next-page">Próxima</button>
+      </div>
+      <div id="card-total-filtrado" class="card hidden" style="margin-top: 1rem;">
         <strong id="valor-total-filtrado">0</strong>
         <span>Horas filtradas</span>
       </div>
@@ -136,17 +108,15 @@
   </section>
 
   <!-- SEÇÃO: Ranking -->
-<section id="section-ranking" class="container" style="display: none;">
-  <h2>Ranking</h2>
-  <ul id="ranking-list" class="lista-ranking" style="max-height: 300px; overflow-y: auto;"></ul>
-
-  <!-- Cronômetro de reset -->
-  <p id="contador-reset" class="contador-reset"></p>
-</section>
+  <section id="section-ranking" class="container hidden">
+    <h2>Ranking</h2>
+    <ul id="ranking-list" class="lista-ranking" style="max-height: 300px; overflow-y: auto;"></ul>
+    <p id="contador-reset" class="contador-reset"></p>
+  </section>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
