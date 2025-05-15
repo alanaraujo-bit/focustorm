@@ -18,7 +18,13 @@ let isRunning = false;
 let isFocusTime = true;
 let remainingTime = 0;
 let tipoGraficoAtual = 'bar';
-
+function gerarSaudacao() {
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) return '☀️ Bom dia';
+  if (hora >= 12 && hora < 18) return '🌤️ Boa tarde';
+  return '🌙 Boa noite';
+}
+ 
 async function registrarNomeUsuario() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -63,7 +69,12 @@ async function registrarNomeUsuario() {
 
 function mostrarTelaLogin() {
   authContainer.innerHTML = `
-    <h2>ENTRAR</h2>
+<div style="text-align: center; margin-bottom: 1.5rem;">
+  <span class="logo" style="font-size: 3rem; color: #00ffc3;">⚡</span>
+  <h2 style="margin: 0.5rem 0 0; color: white; font-size: 1.5rem;">Bem-vindo ao FocuStorm</h2>
+  <p style="color: #ccc; font-size: 0.9rem; margin-top: 0.3rem;">A constância é mais forte que a motivação.</p>
+</div>
+
     <div class="input-group">
       <i class="fas fa-envelope input-icon"></i>
       <input type="text" id="login-name" placeholder="E-mail" />
@@ -153,7 +164,11 @@ async function verificarLogin() {
 
   // Exibir nome do usuário
   const nomeUsuario = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário";
-  document.getElementById('usuario-logado').textContent = `Bem-vindo, ${nomeUsuario}`;
+const saudacao = gerarSaudacao();
+document.getElementById('usuario-logado').innerHTML = `
+  ${saudacao}, <strong>${nomeUsuario}</strong><br>
+  <span style="font-size: 0.9rem; color: #aaa;">O que vamos focar hoje?</span>
+`;
 
   // Tudo certo, mostra interface principal
   authContainer.classList.add("hidden");
@@ -401,32 +416,63 @@ async function renderizarGrafico(periodo = 'semana') {
     }
   });
 
-  if (periodo === 'semana') {
-    const diasSemana = [];
-    const hoje = new Date();
-    const diaSemana = hoje.getDay(); // 0 = domingo
-    const inicioSemana = new Date(hoje);
-    inicioSemana.setDate(hoje.getDate() - diaSemana);
+let labels = [];
 
-    for (let i = 0; i < 7; i++) {
-      const data = new Date(inicioSemana);
-      data.setDate(inicioSemana.getDate() + i);
-      const label = data.toLocaleDateString('pt-BR');
-      diasSemana.push(label);
-    }
+if (periodo === 'semana') {
+  const diasSemana = [];
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0 = domingo
+  const inicioSemana = new Date(hoje);
+  inicioSemana.setDate(hoje.getDate() - diaSemana);
 
-    // ⚠️ Aqui está o segredo: garantir que os labels batam exatamente com os dados
-    const valores = diasSemana.map(dia => {
-      const [dd, mm, aaaa] = dia.split('/');
-      const diaFormatado = `${dd}/${mm}/${aaaa}`;
-      return dadosPorDia[diaFormatado] || 0;
-    });
-
-    renderizarGraficoFoco(valores, diasSemana);
+  for (let i = 0; i < 7; i++) {
+    const data = new Date(inicioSemana);
+    data.setDate(inicioSemana.getDate() + i);
+    const label = data.toLocaleDateString('pt-BR');
+    diasSemana.push(label);
   }
 
-  const valores = labels.map(dia => dadosPorDia[dia]);
+  labels = diasSemana;
+} else if (periodo === 'mes') {
+  const ano = agora.getFullYear();
+  const mes = agora.getMonth();
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+
+  for (let dia = 1; dia <= diasNoMes; dia++) {
+    const data = new Date(ano, mes, dia);
+    labels.push(data.toLocaleDateString('pt-BR'));
+  }
+} else if (periodo === 'ano') {
+  const ano = agora.getFullYear();
+
+  const mesesMap = {
+    0: 'jan', 1: 'fev', 2: 'mar', 3: 'abr', 4: 'mai', 5: 'jun',
+    6: 'jul', 7: 'ago', 8: 'set', 9: 'out', 10: 'nov', 11: 'dez'
+  };
+
+  labels = Object.values(mesesMap);
+  const dadosPorMes = {};
+  for (let i = 0; i < 12; i++) {
+    dadosPorMes[i] = 0;
+  }
+
+  sessoes.forEach(sessao => {
+    const data = new Date(sessao.data);
+    if (data.getFullYear() === ano) {
+      const mes = data.getMonth();
+      dadosPorMes[mes] += sessao.duracao;
+    }
+  });
+
+  const valores = Object.keys(dadosPorMes).map(m => dadosPorMes[m]);
   renderizarGraficoFoco(valores, labels);
+  return;
+}
+
+
+const valores = labels.map(label => dadosPorDia[label] || 0);
+renderizarGraficoFoco(valores, labels);
+
 }
 
 async function atualizarResumo() {
@@ -828,7 +874,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (registerLink) {
     registerLink.addEventListener('click', () => {
       authContainer.innerHTML = `
-        <h2>Criar Conta</h2>
+        <div class="logo-container">
+          <span class="logo">⚡</span>
+          <h2>Criar Conta</h2>
+        </div>
         <div class="input-group">
           <i class="fas fa-user input-icon"></i>
           <input type="text" id="register-name" placeholder="Usuário" />

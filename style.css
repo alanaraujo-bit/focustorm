@@ -739,4 +739,59 @@ h1 {
   .graph-container {
     padding: 0.5rem;
   }
+
+  /* Estilos do Logotipo para Telas Menores */
+  .logo {
+    font-size: 2.5rem;
+  }
+
+  .logo-text {
+    font-size: 1.5rem;
+  }
+
+  .auth-container .logo {
+    font-size: 2rem;
+  }
+
+  .auth-container h2 {
+    font-size: 1.2rem;
+  }
+}
+
+/* Estilos do Logotipo */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.logo {
+  font-size: 3rem;
+  color: #00ffc3;
+  margin-right: 0.5rem;
+}
+
+.logo-text {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+  text-transform: uppercase;
+}
+
+.auth-container .logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-container .logo {
+  font-size: 2.5rem;
+  color: #00ffc3;
+  margin-right: 0.5rem;
+}
+
+.auth-container h2 {
+  font-size: 1.5rem;
 }
