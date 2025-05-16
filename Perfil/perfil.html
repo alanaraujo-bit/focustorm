@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Perfil do Usuário | FocuStorm</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body class="ready">
+  <a href="../index.html" class="voltar">⬅ Voltar para o app</a>
+  <section class="container">
+    <div class="avatar" id="perfil-avatar">A</div>
+<h1 id="perfil-nome"><span class="loading">⏳ Carregando perfil...</span></h1>
+    <div class="summary-cards">
+      <div class="card">
+        <strong id="perfil-total-focus">--</strong>
+        <span>Horas focadas</span>
+      </div>
+      <div class="card">
+        <strong id="perfil-days-active">--</strong>
+        <span>Dias ativos</span>
+      </div>
+      <div class="card">
+        <strong id="perfil-streak-days">--</strong>
+        <span>Sequência (dias)</span>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 2rem;">Gráfico da Semana</h2>
+    <div class="graph-container">
+      <canvas id="perfil-graph"></canvas>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="perfil.js" defer></script>
+</body>
+</html>
