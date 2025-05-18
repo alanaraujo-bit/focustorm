@@ -743,10 +743,15 @@ function pauseTimer() {
         else if (index === 2) medalha = '🥉';
 
         const li = document.createElement('li');
-        li.innerHTML = `
-          <span>${medalha} ${index + 1}º <strong>${nome}</strong></span>
-          <span>⏱️ ${tempoTexto}</span>
-        `;
+li.innerHTML = `
+  <span>${medalha} ${index + 1}º 
+    <a href="Perfil/perfil.html?id=${usuarioId}" style="color: #00ffc3; text-decoration: underline;">
+      ${nome}
+    </a>
+  </span>
+  <span>⏱️ ${tempoTexto}</span>
+`;
+
         rankingList.appendChild(li);
       });
     } catch (err) {
