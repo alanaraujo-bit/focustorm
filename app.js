@@ -1,3 +1,6 @@
+let horaInicioReal = null;
+let tempoTotalAtual = 0;
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log("DOM totalmente carregado.");
   const supabaseUrl = 'https://tjocgefyjgyndzahcwwd.supabase.co';
@@ -240,61 +243,75 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function startTimer() {
-    if (isRunning) return;
-    if (remainingTime <= 0) {
-      const minutes = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-      remainingTime = minutes * 60;
-    }
-    isRunning = true;
+  if (isRunning) return;
 
-    const tickSound = document.getElementById('tick-sound');
-    if (!tickSound) {
-      console.error('Elemento de som (tick-sound) não encontrado no DOM. Continuando sem som...');
-    }
+  const minutos = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+  tempoTotalAtual = minutos * 60;
+  horaInicioReal = Date.now();
+  isRunning = true;
 
-    timer = setInterval(() => {
-      remainingTime--;
-      updateDisplay();
+  const tickSound = document.getElementById('tick-sound');
 
-      // Toca o som nos últimos 30 segundos, a cada 5 segundos, apenas se o timer estiver rodando
-      if (isRunning && remainingTime <= 30 && remainingTime > 0 && remainingTime % 5 === 0) {
-        if (tickSound) {
-          tickSound.currentTime = 0;
-          tickSound.play().catch(error => console.error('Erro ao tocar som de alerta:', error));
-        }
+  timer = setInterval(() => {
+    const agora = Date.now();
+    const decorrido = Math.floor((agora - horaInicioReal) / 1000);
+    remainingTime = tempoTotalAtual - decorrido;
+
+    updateDisplay();
+
+    // Tocar som nos últimos 30s
+    if (isRunning && remainingTime <= 30 && remainingTime > 0) {
+      if (tickSound && tickSound.paused) {
+        tickSound.loop = true;
+        tickSound.play().catch(err => console.error("Erro no som:", err));
       }
-
-      if (remainingTime <= 0) {
-        clearInterval(timer);
-        isRunning = false;
-        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-        salvarSessao(tipoAtual, duracao);
-        isFocusTime = !isFocusTime;
-        alert(isFocusTime ? 'Hora de focar!' : 'Hora de descansar!');
-        if (tickSound) {
-          tickSound.currentTime = 0;
-          tickSound.play().catch(error => console.error('Erro ao tocar som final:', error));
-        }
-        startTimer();
-        mostrarHistorico();
-        mostrarRanking();
-        renderizarGrafico("semana");
-      }
-    }, 1000);
-  }
-
-  function pauseTimer() {
-    clearInterval(timer);
-    isRunning = false;
-    const tickSound = document.getElementById('tick-sound');
-    if (tickSound) {
-      tickSound.pause();
     } else {
-      console.error('Elemento de som (tick-sound) não encontrado ao pausar.');
+      if (tickSound && !tickSound.paused) {
+        tickSound.pause();
+        tickSound.currentTime = 0;
+      }
     }
-    atualizarBotoes('pausado');
+
+    if (remainingTime <= 0) {
+      clearInterval(timer);
+      isRunning = false;
+      if (tickSound) {
+        tickSound.pause();
+        tickSound.currentTime = 0;
+        tickSound.play().catch(err => console.error("Erro no som final:", err));
+      }
+
+      const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+      const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+      salvarSessao(tipoAtual, duracao);
+      isFocusTime = !isFocusTime;
+      alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
+      startTimer();
+      mostrarHistorico();
+      mostrarRanking();
+      renderizarGrafico("semana");
+    }
+  }, 1000);
+}
+
+
+function pauseTimer() {
+  clearInterval(timer);
+  isRunning = false;
+
+  const agora = Date.now();
+  const decorrido = Math.floor((agora - horaInicioReal) / 1000);
+  remainingTime = tempoTotalAtual - decorrido;
+
+  const tickSound = document.getElementById('tick-sound');
+  if (tickSound) {
+    tickSound.pause();
+    tickSound.currentTime = 0;
   }
+
+  atualizarBotoes('pausado');
+}
+
 
   function resetTimer() {
     clearInterval(timer);
@@ -878,44 +895,54 @@ document.addEventListener('DOMContentLoaded', () => {
   if (pauseBtn) pauseBtn.addEventListener('click', () => { pauseTimer(); atualizarBotoes('pausado'); });
 if (resumeBtn) resumeBtn.addEventListener('click', () => {
   isRunning = true;
+  horaInicioReal = Date.now() - (tempoTotalAtual - remainingTime) * 1000;
 
   const tickSound = document.getElementById('tick-sound');
-  if (!tickSound) {
-    console.error('Elemento de som (tick-sound) não encontrado no DOM. Continuando sem som...');
-  }
 
   timer = setInterval(() => {
-    remainingTime--;
+    const agora = Date.now();
+    const decorrido = Math.floor((agora - horaInicioReal) / 1000);
+    remainingTime = tempoTotalAtual - decorrido;
+
     updateDisplay();
 
-    // Toca o som nos últimos 30 segundos, a cada 5 segundos, apenas se o timer estiver rodando
-    if (isRunning && remainingTime <= 30 && remainingTime > 0 && remainingTime % 5 === 0) {
-      if (tickSound) {
+    if (isRunning && remainingTime <= 30 && remainingTime > 0) {
+      if (tickSound && tickSound.paused) {
+        tickSound.loop = true;
+        tickSound.play().catch(err => console.error("Erro no som:", err));
+      }
+    } else {
+      if (tickSound && !tickSound.paused) {
+        tickSound.pause();
         tickSound.currentTime = 0;
-        tickSound.play().catch(error => console.error('Erro ao tocar som de alerta:', error));
       }
     }
 
     if (remainingTime <= 0) {
       clearInterval(timer);
       isRunning = false;
+      if (tickSound) {
+        tickSound.pause();
+        tickSound.currentTime = 0;
+        tickSound.play().catch(err => console.error("Erro no som final:", err));
+      }
+
       const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
       const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
       salvarSessao(tipoAtual, duracao);
       isFocusTime = !isFocusTime;
-      alert(isFocusTime ? 'Hora de focar!' : 'Hora de descansar!');
-      if (tickSound) {
-        tickSound.currentTime = 0;
-        tickSound.play().catch(error => console.error('Erro ao tocar som final:', error));
-      }
+      alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
       startTimer();
       mostrarHistorico();
       mostrarRanking();
       renderizarGrafico("semana");
     }
   }, 1000);
+
   atualizarBotoes('focando');
 });
+
+
   if (resetBtn) resetBtn.addEventListener('click', () => { resetTimer(); atualizarBotoes('inicio'); });
   if (btnFiltroHistorico) btnFiltroHistorico.addEventListener('click', () => mostrarHistorico('personalizado'));
   if (btnLimparFiltro) btnLimparFiltro.addEventListener('click', () => {
