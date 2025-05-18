@@ -623,33 +623,30 @@ function pauseTimer() {
   const tamanhoPagina = 20;
   let rankingCompleto = [];
 
-  async function carregarRankingCompleto() {
-    try {
-      const response = await fetch('http://localhost:3000/ranking'); // Use a URL correta
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-      const dados = await response.json();
-      console.log('Dados recebidos do backend no frontend:', JSON.stringify(dados, null, 2));
+async function carregarRankingCompleto() {
+  try {
+    const { data: dados, error } = await supabase
+      .from('ranking_mensal')
+      .select('*')
+      .order('tempo_total', { ascending: false });
 
-      // Garantir que o mapeamento use os campos corretos
-      rankingCompleto = dados.map(user => {
-        const userId = user.id; // Acessar diretamente o campo id
-        const nome = user.nome || 'Usuário Desconhecido';
-        const tempoTotal = user.tempoTotal || 0;
-        console.log(`Mapeando usuário: id=${userId}, nome=${nome}, tempoTotal=${tempoTotal}`);
-        return [userId, nome, tempoTotal];
-      });
-      paginaRanking = 0;
-      document.getElementById('ranking-list').innerHTML = '';
-      carregarMaisRanking();
-    } catch (err) {
-      console.error('Erro ao buscar ranking via backend:', err.message);
-      document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking via backend. Usando dados locais...</li>';
-      paginaRanking = 0;
-      mostrarRanking();
-    }
+    if (error) throw error;
+
+    rankingCompleto = dados.map(user => {
+      const userId = user.id;
+      const nome = user.name || 'Usuário Desconhecido';
+      const tempoTotal = user.tempo_total || 0;
+      return [userId, nome, tempoTotal];
+    });
+
+    paginaRanking = 0;
+    document.getElementById('ranking-list').innerHTML = '';
+    carregarMaisRanking(); // Usa sua função existente
+  } catch (err) {
+    console.error('Erro ao buscar ranking via Supabase View:', err.message);
+    document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking via view.</li>';
   }
+}
 
   function carregarMaisRanking() {
     const inicio = paginaRanking * tamanhoPagina;
