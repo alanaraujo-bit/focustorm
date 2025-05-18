@@ -14,7 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const rankingList = document.getElementById('ranking-list');
   const valorTotalFiltrado = document.getElementById('valor-total-filtrado');
   const cardTotalFiltrado = document.getElementById('card-total-filtrado');
-  verificarLogin();
+  if (!authContainer || !timerDisplay || !focusInput || !breakInput) {
+    console.error('Elementos do DOM não encontrados. Verifique o index.html.');
+    return;
+  }
 
   let timer;
   let isRunning = false;
@@ -155,29 +158,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function verificarLogin() {
     const userResponse = await supabase.auth.getUser();
-
+    console.log('Resposta de autenticação:', userResponse);
     if (!userResponse || !userResponse.data || !userResponse.data.user) {
+      console.log('Usuário não autenticado, mostrando tela de login.');
       mostrarTelaLogin();
       return;
     }
-
     const user = userResponse.data.user;
+    localStorage.setItem('focustorm_user_id', user.id);
+    console.log('User ID salvo no localStorage:', user.id);
+
     await registrarNomeUsuario();
 
     const nomeUsuario = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário";
     const saudacao = gerarSaudacao();
-document.getElementById('usuario-logado').innerHTML = `
-  ${saudacao}, <strong>${nomeUsuario}</strong>
-  <button id="perfil-icon" title="Ver meu perfil" class="btn-perfil-clean">
-    <i class="fas fa-user"></i> Perfil
-  </button>
-  <br>
-  <span style="font-size: 0.9rem; color: #aaa;">O que vamos focar hoje?</span>
-`;
-document.getElementById('perfil-icon').addEventListener('click', () => {
-  window.location.href = 'Perfil/perfil.html';
-});
 
+    document.getElementById('usuario-logado').innerHTML = `
+      ${saudacao}, <strong>${nomeUsuario}</strong>
+      <button id="perfil-icon" title="Ver meu perfil" class="btn-perfil-clean">
+        <i class="fas fa-user"></i> Perfil
+      </button>
+      <br>
+      <span style="font-size: 0.9rem; color: #aaa;">O que vamos focar hoje?</span>
+    `;
+
+    document.getElementById('perfil-icon').addEventListener('click', () => {
+      const userId = localStorage.getItem('focustorm_user_id');
+      console.log('User ID recuperado para perfil:', userId);
+      if (!userId || userId === "undefined") {
+        alert("ID do usuário não encontrado. Faça login novamente.");
+        return;
+      }
+      window.location.href = `Perfil/perfil.html?id=${userId}`;
+    });
 
     authContainer.classList.add("hidden");
     document.getElementById("menu-topo").classList.remove("hidden");
@@ -233,9 +246,24 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
       remainingTime = minutes * 60;
     }
     isRunning = true;
+
+    const tickSound = document.getElementById('tick-sound');
+    if (!tickSound) {
+      console.error('Elemento de som (tick-sound) não encontrado no DOM. Continuando sem som...');
+    }
+
     timer = setInterval(() => {
       remainingTime--;
       updateDisplay();
+
+      // Toca o som nos últimos 30 segundos, a cada 5 segundos, apenas se o timer estiver rodando
+      if (isRunning && remainingTime <= 30 && remainingTime > 0 && remainingTime % 5 === 0) {
+        if (tickSound) {
+          tickSound.currentTime = 0;
+          tickSound.play().catch(error => console.error('Erro ao tocar som de alerta:', error));
+        }
+      }
+
       if (remainingTime <= 0) {
         clearInterval(timer);
         isRunning = false;
@@ -244,6 +272,10 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
         salvarSessao(tipoAtual, duracao);
         isFocusTime = !isFocusTime;
         alert(isFocusTime ? 'Hora de focar!' : 'Hora de descansar!');
+        if (tickSound) {
+          tickSound.currentTime = 0;
+          tickSound.play().catch(error => console.error('Erro ao tocar som final:', error));
+        }
         startTimer();
         mostrarHistorico();
         mostrarRanking();
@@ -255,6 +287,12 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
   function pauseTimer() {
     clearInterval(timer);
     isRunning = false;
+    const tickSound = document.getElementById('tick-sound');
+    if (tickSound) {
+      tickSound.pause();
+    } else {
+      console.error('Elemento de som (tick-sound) não encontrado ao pausar.');
+    }
     atualizarBotoes('pausado');
   }
 
@@ -263,7 +301,13 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
     isRunning = false;
     isFocusTime = true;
     remainingTime = parseInt(focusInput.value) * 60;
+    const tickSound = document.getElementById('tick-sound');
+    if (tickSound) {
+      tickSound.pause();
+      tickSound.currentTime = 0; // Reseta o som para o início
+    }
     updateDisplay();
+    atualizarBotoes('inicio');
   }
 
   async function mostrarHistorico(filtro = 'todos') {
@@ -306,7 +350,7 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
 
     let totalFocoM = 0;
     paginaDados.forEach(sessao => {
-      const dataFormatada = new Date(sessao.data).toLocaleDateString('pt-BR');
+      const dataFormatada = new Date(sessao.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
       const item = document.createElement('li');
       item.innerHTML = `
         ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} m
@@ -418,7 +462,7 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
     sessoes.forEach(sessao => {
       const dataSessao = new Date(sessao.data);
       if (dataSessao >= inicio) {
-        const dia = dataSessao.toLocaleDateString('pt-BR');
+        const dia = dataSessao.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         if (!dadosPorDia[dia]) dadosPorDia[dia] = 0;
         dadosPorDia[dia] += sessao.duracao;
       }
@@ -436,7 +480,7 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
       for (let i = 0; i < 7; i++) {
         const data = new Date(inicioSemana);
         data.setDate(inicioSemana.getDate() + i);
-        const label = data.toLocaleDateString('pt-BR');
+        const label = data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         diasSemana.push(label);
       }
 
@@ -501,7 +545,7 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
 
     sessoes.forEach(sessao => {
       const dataSessao = new Date(sessao.data);
-      const dataFormatada = dataSessao.toLocaleDateString('pt-BR');
+      const dataFormatada = dataSessao.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
       totalM += sessao.duracao;
       diasUnicos.add(dataFormatada);
@@ -564,16 +608,29 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
 
   async function carregarRankingCompleto() {
     try {
-      const response = await fetch('https://focustorm-backend.onrender.com/ranking');
+      const response = await fetch('http://localhost:3000/ranking'); // Use a URL correta
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
+      }
       const dados = await response.json();
+      console.log('Dados recebidos do backend no frontend:', JSON.stringify(dados, null, 2));
 
-      rankingCompleto = dados.map(user => [user.id, user.nome, user.tempoTotal]);
+      // Garantir que o mapeamento use os campos corretos
+      rankingCompleto = dados.map(user => {
+        const userId = user.id; // Acessar diretamente o campo id
+        const nome = user.nome || 'Usuário Desconhecido';
+        const tempoTotal = user.tempoTotal || 0;
+        console.log(`Mapeando usuário: id=${userId}, nome=${nome}, tempoTotal=${tempoTotal}`);
+        return [userId, nome, tempoTotal];
+      });
       paginaRanking = 0;
       document.getElementById('ranking-list').innerHTML = '';
       carregarMaisRanking();
     } catch (err) {
-      console.error('Erro ao buscar ranking via backend:', err);
-      document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking.</li>';
+      console.error('Erro ao buscar ranking via backend:', err.message);
+      document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking via backend. Usando dados locais...</li>';
+      paginaRanking = 0;
+      mostrarRanking();
     }
   }
 
@@ -583,26 +640,30 @@ document.getElementById('perfil-icon').addEventListener('click', () => {
     const rankingList = document.getElementById('ranking-list');
     const pagina = rankingCompleto.slice(inicio, fim);
 
-pagina.forEach(([usuarioId, nome, minutos], index) => {
-  const li = document.createElement('li');
-  const posicao = inicio + index + 1;
-  let medalha = '';
-  if (posicao === 1) medalha = '🥇';
-  else if (posicao === 2) medalha = '🥈';
-  else if (posicao === 3) medalha = '🥉';
+    pagina.forEach(([usuarioId, nome, minutos], index) => {
+      console.log("Usuário no ranking:", usuarioId, "Nome:", nome); // Depuração
+      const li = document.createElement('li');
+      const posicao = inicio + index + 1;
+      let medalha = '';
+      if (posicao === 1) medalha = '🥇';
+      else if (posicao === 2) medalha = '🥈';
+      else if (posicao === 3) medalha = '🥉';
 
-  const horas = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${m}m`;
+      const horas = Math.floor(minutos / 60);
+      const m = minutos % 60;
+      const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${m}m`;
 
-li.innerHTML = `
-  <span>${medalha} ${index + 1}º <a href="Perfil/perfil.html?id=${usuarioId}" style="color: #00ffc3; text-decoration: underline;">${nome}</a></span>
-  <span>⏱️ ${tempoTexto}</span>
-`;
+      li.innerHTML = `
+        <span>${medalha} ${posicao}º 
+          <a href="/Perfil/perfil.html?id=${usuarioId}" style="color: #00ffc3; text-decoration: underline;">
+            ${nome}
+          </a>
+        </span>
+        <span>⏱️ ${tempoTexto}</span>
+      `;
 
-  rankingList.appendChild(li);
-});
-
+      rankingList.appendChild(li);
+    });
 
     paginaRanking++;
   }
@@ -737,7 +798,6 @@ li.innerHTML = `
     }
   }
 
-  // Eventos de paginação
   document.getElementById('next-page').addEventListener('click', async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -764,6 +824,7 @@ li.innerHTML = `
   });
 
   const startBtn = document.getElementById('start-btn');
+  if (startBtn) startBtn.addEventListener('click', () => { startTimer(); atualizarBotoes('focando'); });
   const pauseBtn = document.getElementById('pause-btn');
   const resetBtn = document.getElementById('reset-btn');
   const resumeBtn = document.getElementById('resume-btn');
@@ -815,27 +876,46 @@ li.innerHTML = `
 
   if (startBtn) startBtn.addEventListener('click', () => { startTimer(); atualizarBotoes('focando'); });
   if (pauseBtn) pauseBtn.addEventListener('click', () => { pauseTimer(); atualizarBotoes('pausado'); });
-  if (resumeBtn) resumeBtn.addEventListener('click', () => {
-    isRunning = true;
-    timer = setInterval(() => {
-      remainingTime--;
-      updateDisplay();
-      if (remainingTime <= 0) {
-        clearInterval(timer);
-        isRunning = false;
-        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-        salvarSessao(tipoAtual, duracao);
-        isFocusTime = !isFocusTime;
-        alert(isFocusTime ? 'Hora de focar!' : 'Hora de descansar!');
-        startTimer();
-        mostrarHistorico();
-        mostrarRanking();
-        renderizarGrafico("semana");
+if (resumeBtn) resumeBtn.addEventListener('click', () => {
+  isRunning = true;
+
+  const tickSound = document.getElementById('tick-sound');
+  if (!tickSound) {
+    console.error('Elemento de som (tick-sound) não encontrado no DOM. Continuando sem som...');
+  }
+
+  timer = setInterval(() => {
+    remainingTime--;
+    updateDisplay();
+
+    // Toca o som nos últimos 30 segundos, a cada 5 segundos, apenas se o timer estiver rodando
+    if (isRunning && remainingTime <= 30 && remainingTime > 0 && remainingTime % 5 === 0) {
+      if (tickSound) {
+        tickSound.currentTime = 0;
+        tickSound.play().catch(error => console.error('Erro ao tocar som de alerta:', error));
       }
-    }, 1000);
-    atualizarBotoes('focando');
-  });
+    }
+
+    if (remainingTime <= 0) {
+      clearInterval(timer);
+      isRunning = false;
+      const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+      const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+      salvarSessao(tipoAtual, duracao);
+      isFocusTime = !isFocusTime;
+      alert(isFocusTime ? 'Hora de focar!' : 'Hora de descansar!');
+      if (tickSound) {
+        tickSound.currentTime = 0;
+        tickSound.play().catch(error => console.error('Erro ao tocar som final:', error));
+      }
+      startTimer();
+      mostrarHistorico();
+      mostrarRanking();
+      renderizarGrafico("semana");
+    }
+  }, 1000);
+  atualizarBotoes('focando');
+});
   if (resetBtn) resetBtn.addEventListener('click', () => { resetTimer(); atualizarBotoes('inicio'); });
   if (btnFiltroHistorico) btnFiltroHistorico.addEventListener('click', () => mostrarHistorico('personalizado'));
   if (btnLimparFiltro) btnLimparFiltro.addEventListener('click', () => {
@@ -885,6 +965,7 @@ li.innerHTML = `
         atualizarResumo();
       }
       if (target === "ranking") {
+        document.getElementById('ranking-list').innerHTML = '';
         carregarRankingCompleto();
       }
     });
@@ -964,7 +1045,7 @@ li.innerHTML = `
           const { error: oauthError } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-             	redirectTo: window.location.origin,
+              redirectTo: window.location.origin,
               prompt: 'select_account',
               queryParams: { access_type: 'offline', prompt: 'consent' },
             }
@@ -1007,4 +1088,7 @@ li.innerHTML = `
     resumeBtn.classList.toggle("hidden", estado !== 'pausado');
     resetBtn.classList.toggle("hidden", estado === 'inicio');
   }
+
+  // Chama verificarLogin no final do DOMContentLoaded
+  verificarLogin();
 });

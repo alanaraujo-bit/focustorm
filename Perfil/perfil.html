@@ -7,10 +7,13 @@
   <link rel="stylesheet" href="../style.css" />
 </head>
 <body class="ready">
+  
   <a href="../index.html" class="voltar">⬅ Voltar para o app</a>
+  
   <section class="container">
     <div class="avatar" id="perfil-avatar">A</div>
-<h1 id="perfil-nome"><span class="loading">⏳ Carregando perfil...</span></h1>
+    <h1 id="perfil-nome"><span class="loading">⏳ Carregando perfil...</span></h1>
+
     <div class="summary-cards">
       <div class="card">
         <strong id="perfil-total-focus">--</strong>
@@ -25,7 +28,7 @@
         <span>Sequência (dias)</span>
       </div>
     </div>
-
+<audio id="tick-sound" src="assets/tick.mp3" preload="auto" loop></audio>
     <h2 style="margin-top: 2rem;">Gráfico da Semana</h2>
     <div class="graph-container">
       <canvas id="perfil-graph"></canvas>
@@ -34,6 +37,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="perfil.js" defer></script>
+  <script type="module" src="perfil.js"></script>
 </body>
 </html>
