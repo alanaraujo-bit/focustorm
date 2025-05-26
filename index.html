@@ -31,16 +31,44 @@
   </nav>
 
   <!-- SEÇÃO: Pomodoro -->
+<div id="objetivo-config" class="objetivo-config">
+  <div class="input-wrapper">
+    <label for="input-objetivo">
+      <i class="fas fa-bullseye"></i> Objetivo
+    </label>
+    <input type="text" id="input-objetivo" placeholder="Ex: Estudar para a faculdade" />
+  </div>
+
+  <div class="input-wrapper">
+    <label for="input-meta-ciclos">
+      <i class="fas fa-sync-alt"></i> Ciclos
+    </label>
+    <input type="number" id="input-meta-ciclos" min="1" value="1" />
+  </div>
+</div>
+
+
   <section id="section-pomodoro" class="container hidden">
     <div class="logout-area">
       <span id="usuario-logado"></span>
       <button id="logout-btn">Sair</button>
     </div>
     <h1>FocuStorm</h1>
-    <div class="timer-settings">
-      <label>Tempo de foco (min): <input type="number" id="focus-time" value="25" /></label>
-      <label>Tempo de pausa (min): <input type="number" id="break-time" value="5" /></label>
-    </div>
+<div class="timer-settings">
+  <div class="input-wrapper">
+    <label for="focus-time">
+      <i class="fas fa-hourglass-start"></i> Foco (min)
+    </label>
+    <input type="number" id="focus-time" value="25" min="1" />
+  </div>
+  <div class="input-wrapper">
+    <label for="break-time">
+      <i class="fas fa-coffee"></i> Pausa (min)
+    </label>
+    <input type="number" id="break-time" value="5" min="1" />
+  </div>
+</div>
+
     <div class="circle-container">
       <svg class="progress-ring" width="160" height="160">
         <circle class="ring-bg" r="70" cx="80" cy="80" />
@@ -48,6 +76,13 @@
       </svg>
       <div class="time-text" id="timer-display">25:00</div>
     </div>
+
+    <div id="ciclo-progresso" class="hidden" style="margin-top: 15px; text-align: center;">
+  <div id="bolinhas-ciclos" style="display: flex; justify-content: center; gap: 10px;"></div>
+  <div id="texto-ciclos" style="margin-top: 5px; font-size: 0.9rem; color: #ccc;"></div>
+</div>
+
+
     <div class="timer-buttons">
       <button id="start-btn">Iniciar</button>
       <button id="pause-btn" class="hidden">Pausar</button>

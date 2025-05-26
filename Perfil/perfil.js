@@ -47,17 +47,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Total focado
-    let totalMin = 0;
-    const diasAtivos = new Set();
-    const diasComFoco = {};
+let totalMin = 0;
+const diasAtivos = new Set();
+const diasComFoco = {};
 
-    sessoes.forEach(sessao => {
-      const data = new Date(sessao.data);
-      const diaStr = data.toLocaleDateString('pt-BR');
-      totalMin += sessao.duracao || 0; // Adicionar fallback para duracao
-      diasAtivos.add(diaStr);
-      diasComFoco[diaStr] = true;
-    });
+sessoes.forEach(sessao => {
+  if (sessao.tipo === 'Foco' && sessao.duracao >= 5) {
+    const dataSessao = new Date(sessao.data);
+    const dataFormatada = dataSessao.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    totalMin += sessao.duracao;
+    diasAtivos.add(dataFormatada);
+    diasComFoco[dataFormatada] = true;
+  }
+});
+
+
 
     const horas = Math.floor(totalMin / 60);
     const minutos = totalMin % 60;
@@ -96,13 +101,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       dadosSemana[label] = 0;
     }
 
-    sessoes.forEach(sessao => {
-      const data = new Date(sessao.data);
-      const label = data.toLocaleDateString('pt-BR');
-      if (dadosSemana[label] !== undefined) {
-        dadosSemana[label] += sessao.duracao || 0; // Adicionar fallback para duracao
-      }
-    });
+sessoes.forEach(sessao => {
+  if (sessao.tipo === 'Foco' && sessao.duracao >= 5) {
+    const data = new Date(sessao.data);
+    const label = data.toLocaleDateString('pt-BR');
+    if (dadosSemana[label] !== undefined) {
+      dadosSemana[label] += sessao.duracao || 0;
+    }
+  }
+});
+
 
     const labels = Object.keys(dadosSemana);
     const valores = Object.values(dadosSemana);

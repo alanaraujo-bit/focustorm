@@ -1,7 +1,23 @@
 let horaInicioReal = null;
 let tempoTotalAtual = 0;
+let objetivoAtual = '';
+let objetivoFinalParaSalvar = '';
 
 document.addEventListener('DOMContentLoaded', () => {
+  const inputMeta = document.getElementById('input-meta-ciclos');
+  if (inputMeta) {
+inputMeta.addEventListener('input', () => {
+  if (inputMeta.value > 10) inputMeta.value = 10;
+  if (inputMeta.value < 1) inputMeta.value = 1;
+  metaCiclos = Math.max(1, Math.min(10, parseInt(inputMeta.value) || 1));
+  ciclosConcluidos = 0;
+  atualizarProgressoCiclos();
+});
+  }
+
+  let metaCiclos = 1;
+  let ciclosConcluidos = 0;
+
   console.log("DOM totalmente carregado.");
   const supabaseUrl = 'https://tjocgefyjgyndzahcwwd.supabase.co';
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqb2NnZWZ5amd5bmR6YWhjd3dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NjExMzgsImV4cCI6MjA2MjIzNzEzOH0.xQxMpAXNbwzrc03WToTCOGv_6v1OSEvdSVwzPEzQGr0';
@@ -17,6 +33,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const rankingList = document.getElementById('ranking-list');
   const valorTotalFiltrado = document.getElementById('valor-total-filtrado');
   const cardTotalFiltrado = document.getElementById('card-total-filtrado');
+  const objetivoInputField = document.getElementById('input-objetivo');
+const startBtn = document.getElementById('start-btn');
+
+function validarCamposPomodoro() {
+  const objetivo = objetivoInputField.value.trim();
+  const foco = parseInt(focusInput.value);
+  const pausa = parseInt(breakInput.value);
+  const ciclos = parseInt(inputMeta.value);
+
+  const valido =
+    objetivo.length > 0 &&
+    objetivo.length <= 100 &&
+    foco >= 1 && foco <= 180 &&
+    pausa >= 1 && pausa <= 60 &&
+    ciclos >= 1 && ciclos <= 10;
+
+  startBtn.disabled = !valido;
+}
+
+// Escutar mudanças nos campos
+objetivoInputField.addEventListener('input', validarCamposPomodoro);
+focusInput.addEventListener('input', validarCamposPomodoro);
+breakInput.addEventListener('input', validarCamposPomodoro);
+inputMeta.addEventListener('input', validarCamposPomodoro);
+
+// Validação inicial
+validarCamposPomodoro();
   if (!authContainer || !timerDisplay || !focusInput || !breakInput) {
     console.error('Elementos do DOM não encontrados. Verifique o index.html.');
     return;
@@ -242,87 +285,206 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function atualizarProgressoCiclos() {
+    const container = document.getElementById('ciclo-progresso');
+    const bolinhasContainer = document.getElementById('bolinhas-ciclos');
+    const texto = document.getElementById('texto-ciclos');
+
+    if (!container || !bolinhasContainer || !texto) return;
+
+    bolinhasContainer.innerHTML = ''; // Limpa as bolinhas antigas
+
+    for (let i = 0; i < metaCiclos; i++) {
+      const bolinha = document.createElement('div');
+      bolinha.style.width = '15px';
+      bolinha.style.height = '15px';
+      bolinha.style.borderRadius = '50%';
+      bolinha.style.backgroundColor = i < ciclosConcluidos ? '#00ffc3' : '#444';
+      bolinha.style.transition = 'background-color 0.3s ease';
+      bolinha.style.border = '1px solid #888';
+      bolinhasContainer.appendChild(bolinha);
+    }
+
+    texto.textContent = `${ciclosConcluidos}/${metaCiclos} ciclos concluídos`;
+    container.classList.remove('hidden');
+  }
+
   function startTimer() {
-  if (isRunning) return;
+    // Não deixe iniciar um novo objetivo se já estiver no meio de outro
+    if (isRunning || (ciclosConcluidos < metaCiclos && objetivoAtual)) {
+      alert("⚠️ Você ainda está no objetivo atual. Conclua todos os ciclos antes de definir outro.");
+      return;
+    }
 
-  const minutos = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-  tempoTotalAtual = minutos * 60;
-  horaInicioReal = Date.now();
-  isRunning = true;
+    let objetivoAtualFinalizado = '';
+    if (objetivoAtual && ciclosConcluidos >= metaCiclos) {
+      alert(`⚠️ Você já concluiu os ${metaCiclos} ciclos de: ${objetivoAtual}. Defina um novo objetivo para continuar.`);
+      return;
+    }
 
-  const tickSound = document.getElementById('tick-sound');
+    // Lê os valores atuais
+    let objetivoInput = document.getElementById('input-objetivo').value.trim();
+    objetivoInput = objetivoInput.replace(/[<>]/g, ''); // Remove tags perigosas
+    const metaInput = parseInt(document.getElementById('input-meta-ciclos').value) || 1;
 
-  timer = setInterval(() => {
+    if (!objetivoInput) {
+      alert("Digite o objetivo da sessão antes de começar.");
+      return;
+    }
+
+    if (objetivoInput.length > 100) {
+      alert("⚠️ O objetivo é muito longo. Limite a 100 caracteres.");
+      return;
+    }
+
+    // Atualiza os valores
+    objetivoAtual = objetivoInput;
+    metaCiclos = metaInput;
+    ciclosConcluidos = 0;
+    atualizarProgressoCiclos();
+
+    // Limpa os campos
+    document.getElementById('input-objetivo').value = '';
+
+    if (isRunning) return;
+
+    const minutos = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+    tempoTotalAtual = minutos * 60;
+    horaInicioReal = Date.now();
+    isRunning = true;
+
+    const tickSound = document.getElementById('tick-sound');
+
+    timer = setInterval(() => {
+      const agora = Date.now();
+      const decorrido = Math.floor((agora - horaInicioReal) / 1000);
+      remainingTime = tempoTotalAtual - decorrido;
+
+      updateDisplay();
+
+      // Tocar som nos últimos 30s
+      if (isRunning && remainingTime <= 30 && remainingTime > 0) {
+        if (tickSound && tickSound.paused) {
+          tickSound.loop = true;
+          tickSound.play().catch(err => console.error("Erro no som:", err));
+        }
+      } else {
+        if (tickSound && !tickSound.paused) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+        }
+      }
+
+      if (remainingTime <= 0) {
+        if (tickSound && !tickSound.paused) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+        }
+
+        clearInterval(timer);
+        isRunning = false;
+
+        if (tickSound) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+          tickSound.play().catch(err => console.error("Erro no som final:", err));
+        }
+
+        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+        salvarSessao(tipoAtual, duracao);
+        if (tipoAtual === 'Foco') {
+          ciclosConcluidos++;
+          atualizarProgressoCiclos();
+        }
+
+        if (ciclosConcluidos >= metaCiclos) {
+          alert(`🎯 Você concluiu ${metaCiclos} ciclos focando em: ${objetivoAtual}`);
+
+          isFocusTime = false; // entra na pausa final
+          objetivoFinalParaSalvar = objetivoAtual;
+          document.getElementById('input-objetivo').value = '';
+          objetivoAtual = '';
+
+          metaCiclos = 1;
+          ciclosConcluidos = 0;
+
+          setTimeout(() => {
+            alert(`🧘 Pausa final do objetivo: ${objetivoFinalParaSalvar}`);
+            alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
+            document.getElementById('barra-preenchida').style.width = '0%';
+            document.getElementById('texto-ciclos').textContent = '0/0 ciclos concluídos';
+            document.getElementById('ciclo-progresso').classList.add('hidden');
+
+            clearInterval(timer); // Para qualquer loop ativo
+            isRunning = false;
+            remainingTime = parseInt(focusInput.value) * 60;
+
+            const tickSound = document.getElementById('tick-sound');
+            if (tickSound) {
+              tickSound.pause();
+              tickSound.currentTime = 0;
+            }
+
+            updateDisplay();
+            atualizarBotoes('inicio');
+          }, 200);
+
+          return; // Impede que continue executando startTimer() abaixo
+        } else {
+          isFocusTime = !isFocusTime;
+          alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
+          startTimer(); // Agora sim, só roda se ainda tiver ciclos pendentes
+        }
+
+        mostrarHistorico();
+        mostrarRanking();
+        renderizarGrafico("semana");
+      }
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    clearInterval(timer);
+    isRunning = false;
+
     const agora = Date.now();
     const decorrido = Math.floor((agora - horaInicioReal) / 1000);
     remainingTime = tempoTotalAtual - decorrido;
 
-    updateDisplay();
-
-    // Tocar som nos últimos 30s
-    if (isRunning && remainingTime <= 30 && remainingTime > 0) {
-      if (tickSound && tickSound.paused) {
-        tickSound.loop = true;
-        tickSound.play().catch(err => console.error("Erro no som:", err));
-      }
-    } else {
-      if (tickSound && !tickSound.paused) {
-        tickSound.pause();
-        tickSound.currentTime = 0;
-      }
+    const tickSound = document.getElementById('tick-sound');
+    if (tickSound) {
+      tickSound.pause();
+      tickSound.currentTime = 0;
     }
 
-    if (remainingTime <= 0) {
-      clearInterval(timer);
-      isRunning = false;
-      if (tickSound) {
-        tickSound.pause();
-        tickSound.currentTime = 0;
-        tickSound.play().catch(err => console.error("Erro no som final:", err));
-      }
-
-      const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-      const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-      salvarSessao(tipoAtual, duracao);
-      isFocusTime = !isFocusTime;
-      alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
-      startTimer();
-      mostrarHistorico();
-      mostrarRanking();
-      renderizarGrafico("semana");
-    }
-  }, 1000);
-}
-
-
-function pauseTimer() {
-  clearInterval(timer);
-  isRunning = false;
-
-  const agora = Date.now();
-  const decorrido = Math.floor((agora - horaInicioReal) / 1000);
-  remainingTime = tempoTotalAtual - decorrido;
-
-  const tickSound = document.getElementById('tick-sound');
-  if (tickSound) {
-    tickSound.pause();
-    tickSound.currentTime = 0;
+    atualizarBotoes('pausado');
   }
-
-  atualizarBotoes('pausado');
-}
-
 
   function resetTimer() {
     clearInterval(timer);
     isRunning = false;
     isFocusTime = true;
     remainingTime = parseInt(focusInput.value) * 60;
+
+    objetivoAtual = '';
+    objetivoFinalParaSalvar = '';
+    metaCiclos = 1;
+    ciclosConcluidos = 0;
+
     const tickSound = document.getElementById('tick-sound');
     if (tickSound) {
       tickSound.pause();
-      tickSound.currentTime = 0; // Reseta o som para o início
+      tickSound.currentTime = 0;
     }
+
+    const progressoContainer = document.getElementById('ciclo-progresso');
+    const bolinhasContainer = document.getElementById('bolinhas-ciclos');
+    const texto = document.getElementById('texto-ciclos');
+    if (progressoContainer) progressoContainer.classList.add('hidden');
+    if (bolinhasContainer) bolinhasContainer.innerHTML = ''; // Clear bolinhas
+    if (texto) texto.textContent = '0/1 ciclos concluídos';
+
     updateDisplay();
     atualizarBotoes('inicio');
   }
@@ -371,10 +533,14 @@ function pauseTimer() {
       const item = document.createElement('li');
       item.innerHTML = `
         ${dataFormatada} - ${sessao.tipo} de ${sessao.duracao} m
+        ${sessao.objetivo ? ` - <em>${sessao.objetivo}</em>` : ''}
         <button onclick="editarSessao('${sessao.id}', ${sessao.duracao})">✏️</button>
       `;
       listaHistorico.appendChild(item);
-      totalFocoM += sessao.duracao;
+
+      if (sessao.tipo === 'Foco' && sessao.duracao >= 5) {
+        totalFocoM += sessao.duracao;
+      }
     });
 
     const horas = Math.floor(totalFocoM / 60);
@@ -466,9 +632,10 @@ function pauseTimer() {
     const agora = new Date();
     let inicio;
     if (periodo === 'semana') {
-      const dia = agora.getDay();
+      const diaSemana = agora.getDay();
       inicio = new Date(agora);
-      inicio.setDate(agora.getDate() - dia);
+      inicio.setDate(agora.getDate() - diaSemana);
+      inicio.setHours(0, 0, 0, 0);
     } else if (periodo === 'mes') {
       inicio = new Date(agora.getFullYear(), agora.getMonth(), 1);
     } else {
@@ -478,8 +645,14 @@ function pauseTimer() {
     const dadosPorDia = {};
     sessoes.forEach(sessao => {
       const dataSessao = new Date(sessao.data);
-      if (dataSessao >= inicio) {
-        const dia = dataSessao.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      console.log("🎯 Sessão recebida:", sessao);
+      if (
+        dataSessao >= inicio &&
+        sessao.tipo === 'Foco' &&
+        sessao.duracao >= 5
+      ) {
+        const dataBR = new Date(dataSessao.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+const dia = dataBR.toLocaleDateString('pt-BR');
         if (!dadosPorDia[dia]) dadosPorDia[dia] = 0;
         dadosPorDia[dia] += sessao.duracao;
       }
@@ -494,12 +667,17 @@ function pauseTimer() {
       const inicioSemana = new Date(hoje);
       inicioSemana.setDate(hoje.getDate() - diaSemana);
 
-      for (let i = 0; i < 7; i++) {
-        const data = new Date(inicioSemana);
-        data.setDate(inicioSemana.getDate() + i);
-        const label = data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-        diasSemana.push(label);
-      }
+for (let i = 0; i < 7; i++) {
+  const data = new Date(inicioSemana);
+  data.setDate(inicioSemana.getDate() + i);
+
+  // Converte para horário de São Paulo
+  const dataBR = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const label = dataBR.toLocaleDateString('pt-BR');
+
+  diasSemana.push(label);
+}
+
 
       labels = diasSemana;
     } else if (periodo === 'mes') {
@@ -527,7 +705,11 @@ function pauseTimer() {
 
       sessoes.forEach(sessao => {
         const data = new Date(sessao.data);
-        if (data.getFullYear() === ano) {
+        if (
+          data.getFullYear() === ano &&
+          sessao.tipo === 'Foco' &&
+          sessao.duracao >= 5
+        ) {
           const mes = data.getMonth();
           dadosPorMes[mes] += sessao.duracao;
         }
@@ -560,13 +742,19 @@ function pauseTimer() {
     let totalM = 0;
     const diasComFoco = {};
 
+    const inicioMes = new Date();
+    inicioMes.setDate(1);
+    inicioMes.setHours(0, 0, 0, 0);
+
     sessoes.forEach(sessao => {
       const dataSessao = new Date(sessao.data);
       const dataFormatada = dataSessao.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-      totalM += sessao.duracao;
-      diasUnicos.add(dataFormatada);
-      diasComFoco[dataFormatada] = true;
+      if (sessao.tipo === 'Foco' && sessao.duracao >= 5 && dataSessao >= inicioMes) {
+        totalM += sessao.duracao;
+        diasUnicos.add(dataFormatada);
+        diasComFoco[dataFormatada] = true;
+      }
     });
 
     const horas = Math.floor(totalM / 60);
@@ -623,30 +811,145 @@ function pauseTimer() {
   const tamanhoPagina = 20;
   let rankingCompleto = [];
 
-async function carregarRankingCompleto() {
-  try {
-    const { data: dados, error } = await supabase
-      .from('ranking_mensal')
-      .select('*')
-      .order('tempo_total', { ascending: false });
+  async function carregarRankingCompleto() {
+    try {
+      const inicioMes = new Date();
+      inicioMes.setDate(1);
+      inicioMes.setHours(0, 0, 0, 0);
 
-    if (error) throw error;
+      const { data: sessoes, error: erroSessoes } = await supabase
+        .from('sessoes1')
+        .select('*');
 
-    rankingCompleto = dados.map(user => {
-      const userId = user.id;
-      const nome = user.name || 'Usuário Desconhecido';
-      const tempoTotal = user.tempo_total || 0;
-      return [userId, nome, tempoTotal];
-    });
+      if (erroSessoes) {
+        console.error('Erro ao buscar sessões:', erroSessoes.message);
+        return;
+      }
 
-    paginaRanking = 0;
-    document.getElementById('ranking-list').innerHTML = '';
-    carregarMaisRanking(); // Usa sua função existente
-  } catch (err) {
-    console.error('Erro ao buscar ranking via Supabase View:', err.message);
-    document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking via view.</li>';
+      const totais = {};
+      sessoes.forEach(sessao => {
+        const dataSessao = new Date(sessao.data);
+        if (
+          sessao.tipo === 'Foco' &&
+          dataSessao >= inicioMes &&
+          sessao.duracao >= 5
+        ) {
+          if (!totais[sessao.usuario_id]) totais[sessao.usuario_id] = 0;
+          totais[sessao.usuario_id] += sessao.duracao;
+        }
+      });
+
+      const { data: usuarios, error: erroUsuarios } = await supabase
+        .from('usuarios')
+        .select('id, name');
+
+      if (erroUsuarios) {
+        console.error('Erro ao buscar usuários:', erroUsuarios.message);
+        return;
+      }
+
+      const mapaNomes = {};
+      usuarios.forEach(user => {
+        mapaNomes[user.id] = user.name;
+      });
+
+      rankingCompleto = Object.entries(totais)
+        .map(([userId, tempo]) => [userId, mapaNomes[userId] || 'Usuário Desconhecido', tempo])
+        .sort((a, b) => b[2] - a[2]);
+
+      paginaRanking = 0;
+      document.getElementById('ranking-list').innerHTML = '';
+      carregarMaisRanking();
+    } catch (err) {
+      console.error('Erro ao buscar ranking via Supabase:', err.message);
+      document.getElementById('ranking-list').innerHTML = '<li>Erro ao carregar ranking.</li>';
+    }
   }
-}
+
+  function runTimer() {
+    horaInicioReal = Date.now() - (tempoTotalAtual - remainingTime) * 1000;
+    const tickSound = document.getElementById('tick-sound');
+
+    timer = setInterval(() => {
+      const agora = Date.now();
+      const decorrido = Math.floor((agora - horaInicioReal) / 1000);
+      remainingTime = tempoTotalAtual - decorrido;
+
+      updateDisplay();
+
+      if (isRunning && remainingTime <= 30 && remainingTime > 0) {
+        if (tickSound && tickSound.paused) {
+          tickSound.loop = true;
+          tickSound.play().catch(err => console.error("Erro no som:", err));
+        }
+      } else {
+        if (tickSound && !tickSound.paused) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+        }
+      }
+
+      if (remainingTime <= 0) {
+        clearInterval(timer);
+        isRunning = false;
+        if (tickSound) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+          tickSound.play().catch(err => console.error("Erro no som final:", err));
+        }
+
+        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+        salvarSessao(tipoAtual, duracao);
+
+        if (tipoAtual === 'Foco') {
+          ciclosConcluidos++;
+          atualizarProgressoCiclos();
+        }
+
+        if (ciclosConcluidos >= metaCiclos) {
+          alert(`🎯 Você concluiu ${metaCiclos} ciclos focando em: ${objetivoAtual}`);
+          isFocusTime = false; // Entra na pausa final
+          objetivoFinalParaSalvar = objetivoAtual;
+          document.getElementById('input-objetivo').value = '';
+          objetivoAtual = '';
+          metaCiclos = 1;
+          ciclosConcluidos = 0;
+
+          setTimeout(() => {
+            alert(`🧘 Pausa final do objetivo: ${objetivoFinalParaSalvar}`);
+            alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
+            document.getElementById('barra-preenchida').style.width = '0%';
+            document.getElementById('texto-ciclos').textContent = '0/0 ciclos concluídos';
+            document.getElementById('ciclo-progresso').classList.add('hidden');
+            document.getElementById('input-objetivo').value = '';
+
+            clearInterval(timer);
+            isRunning = false;
+            remainingTime = parseInt(focusInput.value) * 60;
+
+            if (tickSound) {
+              tickSound.pause();
+              tickSound.currentTime = 0;
+            }
+
+            updateDisplay();
+            atualizarBotoes('inicio');
+          }, 200);
+
+          return;
+        } else {
+          isFocusTime = !isFocusTime;
+          alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
+          startTimer();
+        }
+
+        mostrarHistorico();
+        mostrarRanking();
+        renderizarGrafico("semana");
+      }
+    }, 1000);
+  }
 
   function carregarMaisRanking() {
     const inicio = paginaRanking * tamanhoPagina;
@@ -654,9 +957,9 @@ async function carregarRankingCompleto() {
     const rankingList = document.getElementById('ranking-list');
     const pagina = rankingCompleto.slice(inicio, fim);
 
-    pagina.forEach(([usuarioId, nome, minutos], index) => {
-      console.log("Usuário no ranking:", usuarioId, "Nome:", nome); // Depuração
-      const li = document.createElement('li');
+    pagina.forEach((usuario, index) => {
+      const [usuarioId, nome, minutos] = usuario;
+
       const posicao = inicio + index + 1;
       let medalha = '';
       if (posicao === 1) medalha = '🥇';
@@ -667,6 +970,7 @@ async function carregarRankingCompleto() {
       const m = minutos % 60;
       const tempoTexto = `${horas > 0 ? `${horas}h ` : ''}${m}m`;
 
+      const li = document.createElement('li');
       li.innerHTML = `
         <span>${medalha} ${posicao}º 
           <a href="/Perfil/perfil.html?id=${usuarioId}" style="color: #00ffc3; text-decoration: underline;">
@@ -675,7 +979,6 @@ async function carregarRankingCompleto() {
         </span>
         <span>⏱️ ${tempoTexto}</span>
       `;
-
       rankingList.appendChild(li);
     });
 
@@ -702,11 +1005,10 @@ async function carregarRankingCompleto() {
       }
 
       const totais = {};
-
       sessoes.forEach(sessao => {
-        if (sessao.tipo === 'Foco') {
+        if (sessao.tipo === 'Foco' && dataSessao >= inicioMes && sessao.duracao >= 5) {
           if (!totais[sessao.usuario_id]) totais[sessao.usuario_id] = 0;
-          totais[sessao.usuario_id] += sessao.duracao;
+          totais[sessao.usuario_id] += sessao.duracao || 0;
         }
       });
 
@@ -722,7 +1024,7 @@ async function carregarRankingCompleto() {
 
       const mapaNomes = {};
       usuarios.forEach(user => {
-        mapaNomes[user.id] = user.name;
+        mapaNomes[user.id] = user.name || `Usuário (${user.id})`;
       });
 
       const ranking = Object.entries(totais).sort((a, b) => b[1] - a[1]);
@@ -740,15 +1042,14 @@ async function carregarRankingCompleto() {
         else if (index === 2) medalha = '🥉';
 
         const li = document.createElement('li');
-li.innerHTML = `
-  <span>${medalha} ${index + 1}º 
-    <a href="Perfil/perfil.html?id=${usuarioId}" style="color: #00ffc3; text-decoration: underline;">
-      ${nome}
-    </a>
-  </span>
-  <span>⏱️ ${tempoTexto}</span>
-`;
-
+        li.innerHTML = `
+          <span>${medalha} ${index + 1}º 
+            <a href="Perfil/perfil.html?id=${usuarioId}" style="color: #00ffc3; text-decoration: underline;">
+              ${nome}
+            </a>
+          </span>
+          <span>⏱️ ${tempoTexto}</span>
+        `;
         rankingList.appendChild(li);
       });
     } catch (err) {
@@ -758,9 +1059,36 @@ li.innerHTML = `
   }
 
   async function salvarSessao(tipo, duracao) {
+    if (!['Foco', 'Pausa'].includes(tipo)) {
+      console.warn("Tipo de sessão inválido:", tipo);
+      return;
+    }
+
+    if (tipo === 'Foco' && duracao < 5) {
+      console.warn("Sessão de foco menor que 5 minutos não será salva.");
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.error("Usuário não autenticado.");
+      console.warn("Usuário não autenticado.");
+      return;
+    }
+
+    const cincoMinAtras = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: ultimas, error } = await supabase
+      .from('sessoes1')
+      .select('*')
+      .eq('usuario_id', user.id)
+      .gte('data', cincoMinAtras);
+
+    if (error) {
+      console.error("Erro ao verificar sessões recentes:", error.message);
+      return;
+    }
+
+    if (ultimas && ultimas.length > 0) {
+      console.warn("⛔ Tentativa de salvar sessão duplicada em menos de 5 minutos.");
       return;
     }
 
@@ -781,13 +1109,16 @@ li.innerHTML = `
       usuario_id: user.id,
       duracao: duracao,
       data: new Date().toISOString(),
-      tipo: tipo
+      tipo: tipo,
+      objetivo: objetivoAtual || objetivoFinalParaSalvar,
+      meta_ciclos: metaCiclos
     }]);
 
     if (insertError) {
       console.error('❌ Erro ao salvar sessão:', insertError.message);
     } else {
       console.log('✅ Sessão salva com sucesso!');
+      carregarRankingCompleto();
     }
   }
 
@@ -810,7 +1141,12 @@ li.innerHTML = `
       } else {
         alert("Sessão atualizada!");
         mostrarHistorico();
-        mostrarRanking();
+        carregarRankingCompleto();
+        const rankingSection = document.getElementById("section-ranking");
+        if (!rankingSection.classList.contains("hidden")) {
+          document.getElementById('ranking-list').innerHTML = '';
+          carregarRankingCompleto();
+        }
       }
     } else {
       alert("Valor inválido.");
@@ -842,8 +1178,23 @@ li.innerHTML = `
     }
   });
 
-  const startBtn = document.getElementById('start-btn');
-  if (startBtn) startBtn.addEventListener('click', () => { startTimer(); atualizarBotoes('focando'); });
+  if (startBtn) startBtn.addEventListener('click', () => {
+    const objetivo = document.getElementById('input-objetivo').value.trim();
+
+    if (objetivoAtual && ciclosConcluidos < metaCiclos) {
+      alert(`⚠️ Você ainda está no objetivo atual: "${objetivoAtual}". Conclua todos os ${metaCiclos} ciclos antes de iniciar outro.`);
+      return;
+    }
+
+    if (!objetivo) {
+      alert("⚠️ Digite o objetivo antes de começar.");
+      return;
+    }
+
+    startTimer();
+    atualizarBotoes('focando');
+  });
+
   const pauseBtn = document.getElementById('pause-btn');
   const resetBtn = document.getElementById('reset-btn');
   const resumeBtn = document.getElementById('resume-btn');
@@ -869,22 +1220,28 @@ li.innerHTML = `
     }
   }
 
-  focusInput.addEventListener('input', () => {
-    if (focusInput.value < 1) focusInput.value = 1;
-    if (!isRunning && isFocusTime) {
-      remainingTime = parseInt(focusInput.value) * 60;
-      updateDisplay();
-    }
-  });
+focusInput.addEventListener('input', () => {
+  let valor = parseInt(focusInput.value);
+  if (valor < 1) valor = 1;
+  if (valor > 180) valor = 180; // Máximo 3 horas
+  focusInput.value = valor;
+  if (!isRunning && isFocusTime) {
+    remainingTime = valor * 60;
+    updateDisplay();
+  }
+});
 
-  breakInput.addEventListener('input', () => {
-    if (breakInput.value < 1) breakInput.value = 1;
-    if (!isRunning && !isFocusTime) {
-      remainingTime = parseInt(breakInput.value) * 60;
-      updateDisplay();
-      document.getElementById('skip-break-btn').classList.toggle('hidden', isFocusTime || !isRunning);
-    }
-  });
+breakInput.addEventListener('input', () => {
+  let valor = parseInt(breakInput.value);
+  if (valor < 1) valor = 1;
+  if (valor > 60) valor = 60; // Máximo 1 hora
+  breakInput.value = valor;
+  if (!isRunning && !isFocusTime) {
+    remainingTime = valor * 60;
+    updateDisplay();
+  }
+});
+
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
@@ -893,57 +1250,55 @@ li.innerHTML = `
     });
   }
 
-  if (startBtn) startBtn.addEventListener('click', () => { startTimer(); atualizarBotoes('focando'); });
   if (pauseBtn) pauseBtn.addEventListener('click', () => { pauseTimer(); atualizarBotoes('pausado'); });
-if (resumeBtn) resumeBtn.addEventListener('click', () => {
-  isRunning = true;
-  horaInicioReal = Date.now() - (tempoTotalAtual - remainingTime) * 1000;
+  if (resumeBtn) resumeBtn.addEventListener('click', () => {
+    isRunning = true;
+    horaInicioReal = Date.now() - (tempoTotalAtual - remainingTime) * 1000;
 
-  const tickSound = document.getElementById('tick-sound');
+    const tickSound = document.getElementById('tick-sound');
 
-  timer = setInterval(() => {
-    const agora = Date.now();
-    const decorrido = Math.floor((agora - horaInicioReal) / 1000);
-    remainingTime = tempoTotalAtual - decorrido;
+    timer = setInterval(() => {
+      const agora = Date.now();
+      const decorrido = Math.floor((agora - horaInicioReal) / 1000);
+      remainingTime = tempoTotalAtual - decorrido;
 
-    updateDisplay();
+      updateDisplay();
 
-    if (isRunning && remainingTime <= 30 && remainingTime > 0) {
-      if (tickSound && tickSound.paused) {
-        tickSound.loop = true;
-        tickSound.play().catch(err => console.error("Erro no som:", err));
-      }
-    } else {
-      if (tickSound && !tickSound.paused) {
-        tickSound.pause();
-        tickSound.currentTime = 0;
-      }
-    }
-
-    if (remainingTime <= 0) {
-      clearInterval(timer);
-      isRunning = false;
-      if (tickSound) {
-        tickSound.pause();
-        tickSound.currentTime = 0;
-        tickSound.play().catch(err => console.error("Erro no som final:", err));
+      if (isRunning && remainingTime <= 30 && remainingTime > 0) {
+        if (tickSound && tickSound.paused) {
+          tickSound.loop = true;
+          tickSound.play().catch(err => console.error("Erro no som:", err));
+        }
+      } else {
+        if (tickSound && !tickSound.paused) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+        }
       }
 
-      const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-      const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-      salvarSessao(tipoAtual, duracao);
-      isFocusTime = !isFocusTime;
-      alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
-      startTimer();
-      mostrarHistorico();
-      mostrarRanking();
-      renderizarGrafico("semana");
-    }
-  }, 1000);
+      if (remainingTime <= 0) {
+        clearInterval(timer);
+        isRunning = false;
+        if (tickSound) {
+          tickSound.pause();
+          tickSound.currentTime = 0;
+          tickSound.play().catch(err => console.error("Erro no som final:", err));
+        }
 
-  atualizarBotoes('focando');
-});
+        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+        salvarSessao(tipoAtual, duracao);
+        isFocusTime = !isFocusTime;
+        alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
+        startTimer();
+        mostrarHistorico();
+        mostrarRanking();
+        renderizarGrafico("semana");
+      }
+    }, 1000);
 
+    atualizarBotoes('focando');
+  });
 
   if (resetBtn) resetBtn.addEventListener('click', () => { resetTimer(); atualizarBotoes('inicio'); });
   if (btnFiltroHistorico) btnFiltroHistorico.addEventListener('click', () => mostrarHistorico('personalizado'));
@@ -985,6 +1340,16 @@ if (resumeBtn) resumeBtn.addEventListener('click', () => {
           sections[key].classList.add("hidden");
         }
       });
+
+      const objetivoConfig = document.getElementById('objetivo-config');
+      if (objetivoConfig) {
+        if (target === 'pomodoro') {
+          objetivoConfig.classList.remove('hidden');
+        } else {
+          objetivoConfig.classList.add('hidden');
+        }
+      }
+
       navButtons.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
 
@@ -1105,7 +1470,6 @@ if (resumeBtn) resumeBtn.addEventListener('click', () => {
   }
 
   function atualizarBotoes(estado) {
-    const startBtn = document.getElementById('start-btn');
     const pauseBtn = document.getElementById('pause-btn');
     const resumeBtn = document.getElementById('resume-btn');
     const resetBtn = document.getElementById('reset-btn');
@@ -1118,6 +1482,5 @@ if (resumeBtn) resumeBtn.addEventListener('click', () => {
     resetBtn.classList.toggle("hidden", estado === 'inicio');
   }
 
-  // Chama verificarLogin no final do DOMContentLoaded
   verificarLogin();
 });
