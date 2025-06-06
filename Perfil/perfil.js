@@ -67,26 +67,44 @@ sessoes.forEach(sessao => {
     const horas = Math.floor(totalMin / 60);
     const minutos = totalMin % 60;
     document.getElementById('perfil-total-focus').textContent = `${horas > 0 ? `${horas}h ` : ''}${minutos}m`;
-    document.getElementById('perfil-days-active').textContent = diasAtivos.size;
+    
+    // Cálculo da sequência real (streak)
+const hoje = new Date();
+hoje.setHours(0, 0, 0, 0);
+    
+    // Cálculo da média por dia do mês
+const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+const diasCorridosNoMes = Math.ceil((hoje - primeiroDiaMes) / (1000 * 60 * 60 * 24)) + 1;
 
-    // Cálculo de sequência (streak)
-    const diasOrdenados = [...diasAtivos].map(d => {
-      const [dia, mes, ano] = d.split('/');
-      return new Date(+ano, mes - 1, +dia);
-    }).sort((a, b) => a - b);
+const mediaMin = Math.floor(totalMin / diasCorridosNoMes);
+const mediaHoras = Math.floor(mediaMin / 60);
+const mediaRestante = mediaMin % 60;
 
-    let streak = 0;
-    let maxStreak = 0;
-    for (let i = 0; i < diasOrdenados.length; i++) {
-      if (i === 0 || (diasOrdenados[i] - diasOrdenados[i - 1]) === 86400000) {
-        streak++;
-        maxStreak = Math.max(maxStreak, streak);
-      } else {
-        streak = 1;
-      }
-    }
+document.getElementById('perfil-days-active').textContent = `${mediaHoras > 0 ? `${mediaHoras}h ` : ''}${mediaRestante}m`;
 
-    document.getElementById('perfil-streak-days').textContent = maxStreak;
+const diasOrdenados = [...diasAtivos].map(d => {
+  const [dia, mes, ano] = d.split('/');
+  return new Date(+ano, mes - 1, +dia);
+}).sort((a, b) => b - a); // mais recente primeiro
+
+let streakReal = 0;
+
+for (let i = 0; i < diasOrdenados.length; i++) {
+  const esperado = new Date(hoje);
+  esperado.setDate(hoje.getDate() - i);
+
+  const esperadoStr = esperado.toDateString();
+  const atualStr = diasOrdenados[i]?.toDateString();
+
+  if (esperadoStr === atualStr) {
+    streakReal++;
+  } else {
+    break;
+  }
+}
+
+document.getElementById('perfil-streak-days').textContent = streakReal;
+
 
     // Gráfico da semana
     const agora = new Date();

@@ -69,6 +69,8 @@ validarCamposPomodoro();
   let isRunning = false;
   let isFocusTime = true;
   let remainingTime = 0;
+  let tempoRestante = 0;
+let tipoSessaoAtual = '';
   let tipoGraficoAtual = 'bar';
   let paginaAtual = 1;
 
@@ -309,140 +311,121 @@ validarCamposPomodoro();
     container.classList.remove('hidden');
   }
 
-  function startTimer() {
-    // Não deixe iniciar um novo objetivo se já estiver no meio de outro
-    if (isRunning || (ciclosConcluidos < metaCiclos && objetivoAtual)) {
-      alert("⚠️ Você ainda está no objetivo atual. Conclua todos os ciclos antes de definir outro.");
-      return;
-    }
+function startTimer() {
+if (isRunning) {
+  alert("⚠️ O cronômetro já está em execução.");
+  return;
+}
 
-    let objetivoAtualFinalizado = '';
-    if (objetivoAtual && ciclosConcluidos >= metaCiclos) {
-      alert(`⚠️ Você já concluiu os ${metaCiclos} ciclos de: ${objetivoAtual}. Defina um novo objetivo para continuar.`);
-      return;
-    }
 
-    // Lê os valores atuais
-    let objetivoInput = document.getElementById('input-objetivo').value.trim();
-    objetivoInput = objetivoInput.replace(/[<>]/g, ''); // Remove tags perigosas
-    const metaInput = parseInt(document.getElementById('input-meta-ciclos').value) || 1;
+  let objetivoInput = document.getElementById('input-objetivo').value.trim();
+  objetivoInput = objetivoInput.replace(/[<>]/g, '');
 
-    if (!objetivoInput) {
-      alert("Digite o objetivo da sessão antes de começar.");
-      return;
-    }
+  const metaInput = parseInt(document.getElementById('input-meta-ciclos').value) || 1;
 
-    if (objetivoInput.length > 100) {
-      alert("⚠️ O objetivo é muito longo. Limite a 100 caracteres.");
-      return;
-    }
+  if (!objetivoInput) {
+    alert("Digite o objetivo da sessão antes de começar.");
+    return;
+  }
 
-    // Atualiza os valores
-    objetivoAtual = objetivoInput;
-    metaCiclos = metaInput;
-    ciclosConcluidos = 0;
-    atualizarProgressoCiclos();
+  if (objetivoInput.length > 100) {
+    alert("⚠️ O objetivo é muito longo. Limite a 100 caracteres.");
+    return;
+  }
 
-    // Limpa os campos
-    document.getElementById('input-objetivo').value = '';
+  objetivoAtual = objetivoInput;
+  metaCiclos = Math.min(Math.max(metaInput, 1), 10);
+  ciclosConcluidos = 0;
+  objetivoFinalParaSalvar = objetivoAtual;
+  atualizarProgressoCiclos();
 
-    if (isRunning) return;
+  document.getElementById('input-objetivo').value = '';
+  document.getElementById('input-meta-ciclos').value = '';
 
-    const minutos = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-    tempoTotalAtual = minutos * 60;
-    horaInicioReal = Date.now();
-    isRunning = true;
+  remainingTime = parseInt(focusInput.value) * 60;
+tempoTotalAtual = remainingTime;
+horaInicioReal = Date.now();
+isFocusTime = true;
+isRunning = true;
+isPaused = false;
+tipoSessaoAtual = 'Foco';
+runTimer(); // Agora sim o cronômetro começa de verdade
 
-    const tickSound = document.getElementById('tick-sound');
+}
 
-    timer = setInterval(() => {
-      const agora = Date.now();
-      const decorrido = Math.floor((agora - horaInicioReal) / 1000);
-      remainingTime = tempoTotalAtual - decorrido;
+function iniciarSessaoPomodoro() {
+  isRunning = true;
+  isPaused = false;
+
+  let tempoFoco = parseInt(focusInput.value) * 60;
+  let tempoPausa = parseInt(breakInput.value) * 60;
+
+  tempoRestante = tempoFoco;
+  tempoTotalAtual = tempoFoco;
+  tipoSessaoAtual = 'Foco';
+  updateDisplay();
+
+
+  timer = setInterval(() => {
+    if (!isPaused) {
+      tempoRestante--;
+
+      // Som nos últimos 30s
+      if (tempoRestante === 30) iniciarSom();
+
+      if (tempoRestante <= 0) {
+        pararSom();
+        clearInterval(timer);
+
+
+        if (tipoSessaoAtual === 'Foco') {
+          mostrarNotificacao('⏰ Foco concluído! Hora da pausa!');
+setTimeout(() => {
+  tipoSessaoAtual = 'Pausa';
+  tempoRestante = tempoPausa;
+  tempoTotalAtual = tempoPausa;
+  updateDisplay();
+
+  timer = setInterval(() => {
+
+              if (!isPaused) {
+                tempoRestante--;
+
+                if (tempoRestante === 30) iniciarSom();
+
+                if (tempoRestante <= 0) {
+                  pararSom();
+                  clearInterval(timer);
+                  ciclosConcluidos++;
+                  atualizarProgressoCiclos();
+
+                  if (ciclosConcluidos < metaCiclos) {
+                    iniciarSessaoPomodoro(); // Inicia próximo ciclo
+                  } else {
+                    mostrarNotificacao('🏁 Objetivo concluído!');
+                    salvarSessao(objetivoAtual, metaCiclos);
+                    objetivoAtual = '';
+                    metaCiclos = 1;
+                    ciclosConcluidos = 0;
+                    atualizarProgressoCiclos();
+                    isRunning = false;
+                  }
+                }
+              }
+              updateDisplay();
+
+            }, 1000);
+          }, 300); // atraso pequeno para a troca ser perceptível
+        }
+      }
 
       updateDisplay();
 
-      // Tocar som nos últimos 30s
-      if (isRunning && remainingTime <= 30 && remainingTime > 0) {
-        if (tickSound && tickSound.paused) {
-          tickSound.loop = true;
-          tickSound.play().catch(err => console.error("Erro no som:", err));
-        }
-      } else {
-        if (tickSound && !tickSound.paused) {
-          tickSound.pause();
-          tickSound.currentTime = 0;
-        }
-      }
+    }
+  }, 1000);
+}
 
-      if (remainingTime <= 0) {
-        if (tickSound && !tickSound.paused) {
-          tickSound.pause();
-          tickSound.currentTime = 0;
-        }
 
-        clearInterval(timer);
-        isRunning = false;
-
-        if (tickSound) {
-          tickSound.pause();
-          tickSound.currentTime = 0;
-          tickSound.play().catch(err => console.error("Erro no som final:", err));
-        }
-
-        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-        salvarSessao(tipoAtual, duracao);
-        if (tipoAtual === 'Foco') {
-          ciclosConcluidos++;
-          atualizarProgressoCiclos();
-        }
-
-        if (ciclosConcluidos >= metaCiclos) {
-          alert(`🎯 Você concluiu ${metaCiclos} ciclos focando em: ${objetivoAtual}`);
-
-          isFocusTime = false; // entra na pausa final
-          objetivoFinalParaSalvar = objetivoAtual;
-          document.getElementById('input-objetivo').value = '';
-          objetivoAtual = '';
-
-          metaCiclos = 1;
-          ciclosConcluidos = 0;
-
-          setTimeout(() => {
-            alert(`🧘 Pausa final do objetivo: ${objetivoFinalParaSalvar}`);
-            alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
-            document.getElementById('barra-preenchida').style.width = '0%';
-            document.getElementById('texto-ciclos').textContent = '0/0 ciclos concluídos';
-            document.getElementById('ciclo-progresso').classList.add('hidden');
-
-            clearInterval(timer); // Para qualquer loop ativo
-            isRunning = false;
-            remainingTime = parseInt(focusInput.value) * 60;
-
-            const tickSound = document.getElementById('tick-sound');
-            if (tickSound) {
-              tickSound.pause();
-              tickSound.currentTime = 0;
-            }
-
-            updateDisplay();
-            atualizarBotoes('inicio');
-          }, 200);
-
-          return; // Impede que continue executando startTimer() abaixo
-        } else {
-          isFocusTime = !isFocusTime;
-          alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
-          startTimer(); // Agora sim, só roda se ainda tiver ciclos pendentes
-        }
-
-        mostrarHistorico();
-        mostrarRanking();
-        renderizarGrafico("semana");
-      }
-    }, 1000);
-  }
 
   function pauseTimer() {
     clearInterval(timer);
@@ -759,7 +742,19 @@ for (let i = 0; i < 7; i++) {
 
     const horas = Math.floor(totalM / 60);
     const minutos = totalM % 60;
-    document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}m`;
+    // Total focado
+document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}m`;
+
+const hoje = new Date();
+// Novo cálculo de média por dia do mês
+const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+const diasDoMes = Math.ceil((hoje - primeiroDia) / (1000 * 60 * 60 * 24)) + 1;
+const mediaMinutos = Math.floor(totalM / diasDoMes);
+const mediaHoras = Math.floor(mediaMinutos / 60);
+const mediaRestante = mediaMinutos % 60;
+
+document.getElementById('media-diaria').textContent = `${mediaHoras > 0 ? mediaHoras + 'h ' : ''}${mediaRestante}m`;
+
 
     document.getElementById('days-active').textContent = diasUnicos.size;
 
@@ -770,18 +765,25 @@ for (let i = 0; i < 7; i++) {
       })
       .sort((a, b) => a - b);
 
-    let streak = 0;
-    let maxStreak = 0;
-    for (let i = 0; i < diasOrdenados.length; i++) {
-      if (i === 0 || (diasOrdenados[i] - diasOrdenados[i - 1]) === 86400000) {
-        streak++;
-        maxStreak = Math.max(maxStreak, streak);
-      } else {
-        streak = 1;
-      }
-    }
+// Ordena do mais recente para o mais antigo
+diasOrdenados.reverse();
 
-    document.getElementById('streak-days').textContent = maxStreak;
+for (let i = 0; i < diasOrdenados.length; i++) {
+  const esperado = new Date(hoje);
+  esperado.setDate(hoje.getDate() - i);
+
+  const esperadoStr = esperado.toDateString();
+  const atualStr = diasOrdenados[i].toDateString();
+
+  if (esperadoStr === atualStr) {
+    streakAtual++;
+  } else {
+    break;
+  }
+}
+
+document.getElementById('streak-days').textContent = streakAtual;
+
   }
 
   function atualizarCronometroReset() {
