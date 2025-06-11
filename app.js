@@ -6,13 +6,13 @@ let objetivoFinalParaSalvar = '';
 document.addEventListener('DOMContentLoaded', () => {
   const inputMeta = document.getElementById('input-meta-ciclos');
   if (inputMeta) {
-inputMeta.addEventListener('input', () => {
-  if (inputMeta.value > 10) inputMeta.value = 10;
-  if (inputMeta.value < 1) inputMeta.value = 1;
-  metaCiclos = Math.max(1, Math.min(10, parseInt(inputMeta.value) || 1));
-  ciclosConcluidos = 0;
-  atualizarProgressoCiclos();
-});
+    inputMeta.addEventListener('input', () => {
+      if (inputMeta.value > 10) inputMeta.value = 10;
+      if (inputMeta.value < 1) inputMeta.value = 1;
+      metaCiclos = Math.max(1, Math.min(10, parseInt(inputMeta.value) || 1));
+      ciclosConcluidos = 0;
+      atualizarProgressoCiclos();
+    });
   }
 
   let metaCiclos = 1;
@@ -34,32 +34,32 @@ inputMeta.addEventListener('input', () => {
   const valorTotalFiltrado = document.getElementById('valor-total-filtrado');
   const cardTotalFiltrado = document.getElementById('card-total-filtrado');
   const objetivoInputField = document.getElementById('input-objetivo');
-const startBtn = document.getElementById('start-btn');
+  const startBtn = document.getElementById('start-btn');
 
-function validarCamposPomodoro() {
-  const objetivo = objetivoInputField.value.trim();
-  const foco = parseInt(focusInput.value);
-  const pausa = parseInt(breakInput.value);
-  const ciclos = parseInt(inputMeta.value);
+  function validarCamposPomodoro() {
+    const objetivo = objetivoInputField.value.trim();
+    const foco = parseInt(focusInput.value);
+    const pausa = parseInt(breakInput.value);
+    const ciclos = parseInt(inputMeta.value);
 
-  const valido =
-    objetivo.length > 0 &&
-    objetivo.length <= 100 &&
-    foco >= 1 && foco <= 180 &&
-    pausa >= 1 && pausa <= 60 &&
-    ciclos >= 1 && ciclos <= 10;
+    const valido =
+      objetivo.length > 0 &&
+      objetivo.length <= 100 &&
+      foco >= 1 && foco <= 180 &&
+      pausa >= 1 && pausa <= 60 &&
+      ciclos >= 1 && ciclos <= 10;
 
-  startBtn.disabled = !valido;
-}
+    startBtn.disabled = !valido;
+  }
 
-// Escutar mudanças nos campos
-objetivoInputField.addEventListener('input', validarCamposPomodoro);
-focusInput.addEventListener('input', validarCamposPomodoro);
-breakInput.addEventListener('input', validarCamposPomodoro);
-inputMeta.addEventListener('input', validarCamposPomodoro);
+  // Escutar mudanças nos campos
+  objetivoInputField.addEventListener('input', validarCamposPomodoro);
+  focusInput.addEventListener('input', validarCamposPomodoro);
+  breakInput.addEventListener('input', validarCamposPomodoro);
+  inputMeta.addEventListener('input', validarCamposPomodoro);
 
-// Validação inicial
-validarCamposPomodoro();
+  // Validação inicial
+  validarCamposPomodoro();
   if (!authContainer || !timerDisplay || !focusInput || !breakInput) {
     console.error('Elementos do DOM não encontrados. Verifique o index.html.');
     return;
@@ -70,7 +70,7 @@ validarCamposPomodoro();
   let isFocusTime = true;
   let remainingTime = 0;
   let tempoRestante = 0;
-let tipoSessaoAtual = '';
+  let tipoSessaoAtual = '';
   let tipoGraficoAtual = 'bar';
   let paginaAtual = 1;
 
@@ -311,121 +311,47 @@ let tipoSessaoAtual = '';
     container.classList.remove('hidden');
   }
 
-function startTimer() {
-if (isRunning) {
-  alert("⚠️ O cronômetro já está em execução.");
-  return;
-}
-
-
-  let objetivoInput = document.getElementById('input-objetivo').value.trim();
-  objetivoInput = objetivoInput.replace(/[<>]/g, '');
-
-  const metaInput = parseInt(document.getElementById('input-meta-ciclos').value) || 1;
-
-  if (!objetivoInput) {
-    alert("Digite o objetivo da sessão antes de começar.");
-    return;
-  }
-
-  if (objetivoInput.length > 100) {
-    alert("⚠️ O objetivo é muito longo. Limite a 100 caracteres.");
-    return;
-  }
-
-  objetivoAtual = objetivoInput;
-  metaCiclos = Math.min(Math.max(metaInput, 1), 10);
-  ciclosConcluidos = 0;
-  objetivoFinalParaSalvar = objetivoAtual;
-  atualizarProgressoCiclos();
-
-  document.getElementById('input-objetivo').value = '';
-  document.getElementById('input-meta-ciclos').value = '';
-
-  remainingTime = parseInt(focusInput.value) * 60;
-tempoTotalAtual = remainingTime;
-horaInicioReal = Date.now();
-isFocusTime = true;
-isRunning = true;
-isPaused = false;
-tipoSessaoAtual = 'Foco';
-runTimer(); // Agora sim o cronômetro começa de verdade
-
-}
-
-function iniciarSessaoPomodoro() {
-  isRunning = true;
-  isPaused = false;
-
-  let tempoFoco = parseInt(focusInput.value) * 60;
-  let tempoPausa = parseInt(breakInput.value) * 60;
-
-  tempoRestante = tempoFoco;
-  tempoTotalAtual = tempoFoco;
-  tipoSessaoAtual = 'Foco';
-  updateDisplay();
-
-
-  timer = setInterval(() => {
-    if (!isPaused) {
-      tempoRestante--;
-
-      // Som nos últimos 30s
-      if (tempoRestante === 30) iniciarSom();
-
-      if (tempoRestante <= 0) {
-        pararSom();
-        clearInterval(timer);
-
-
-        if (tipoSessaoAtual === 'Foco') {
-          mostrarNotificacao('⏰ Foco concluído! Hora da pausa!');
-setTimeout(() => {
-  tipoSessaoAtual = 'Pausa';
-  tempoRestante = tempoPausa;
-  tempoTotalAtual = tempoPausa;
-  updateDisplay();
-
-  timer = setInterval(() => {
-
-              if (!isPaused) {
-                tempoRestante--;
-
-                if (tempoRestante === 30) iniciarSom();
-
-                if (tempoRestante <= 0) {
-                  pararSom();
-                  clearInterval(timer);
-                  ciclosConcluidos++;
-                  atualizarProgressoCiclos();
-
-                  if (ciclosConcluidos < metaCiclos) {
-                    iniciarSessaoPomodoro(); // Inicia próximo ciclo
-                  } else {
-                    mostrarNotificacao('🏁 Objetivo concluído!');
-                    salvarSessao(objetivoAtual, metaCiclos);
-                    objetivoAtual = '';
-                    metaCiclos = 1;
-                    ciclosConcluidos = 0;
-                    atualizarProgressoCiclos();
-                    isRunning = false;
-                  }
-                }
-              }
-              updateDisplay();
-
-            }, 1000);
-          }, 300); // atraso pequeno para a troca ser perceptível
-        }
-      }
-
-      updateDisplay();
-
+  function iniciarSessaoPomodoro() {
+    if (isRunning) {
+      alert("⚠️ O cronômetro já está em execução.");
+      return;
     }
-  }, 1000);
-}
 
 
+    let objetivoInput = document.getElementById('input-objetivo').value.trim();
+    objetivoInput = objetivoInput.replace(/[<>]/g, '');
+
+    const metaInput = parseInt(document.getElementById('input-meta-ciclos').value) || 1;
+
+    if (!objetivoInput) {
+      alert("Digite o objetivo da sessão antes de começar.");
+      return;
+    }
+
+    if (objetivoInput.length > 100) {
+      alert("⚠️ O objetivo é muito longo. Limite a 100 caracteres.");
+      return;
+    }
+
+    objetivoAtual = objetivoInput;
+    metaCiclos = Math.min(Math.max(metaInput, 1), 10);
+    ciclosConcluidos = 0;
+    objetivoFinalParaSalvar = objetivoAtual;
+    atualizarProgressoCiclos();
+
+    document.getElementById('input-objetivo').value = '';
+    document.getElementById('input-meta-ciclos').value = '';
+
+    remainingTime = parseInt(focusInput.value) * 60;
+    tempoTotalAtual = remainingTime;
+    horaInicioReal = Date.now();
+    isFocusTime = true;
+    isRunning = true;
+    isPaused = false;
+    tipoSessaoAtual = 'Foco';
+    runTimer(); // Agora sim o cronômetro começa de verdade
+
+  }
 
   function pauseTimer() {
     clearInterval(timer);
@@ -635,7 +561,7 @@ setTimeout(() => {
         sessao.duracao >= 5
       ) {
         const dataBR = new Date(dataSessao.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-const dia = dataBR.toLocaleDateString('pt-BR');
+        const dia = dataBR.toLocaleDateString('pt-BR');
         if (!dadosPorDia[dia]) dadosPorDia[dia] = 0;
         dadosPorDia[dia] += sessao.duracao;
       }
@@ -650,16 +576,16 @@ const dia = dataBR.toLocaleDateString('pt-BR');
       const inicioSemana = new Date(hoje);
       inicioSemana.setDate(hoje.getDate() - diaSemana);
 
-for (let i = 0; i < 7; i++) {
-  const data = new Date(inicioSemana);
-  data.setDate(inicioSemana.getDate() + i);
+      for (let i = 0; i < 7; i++) {
+        const data = new Date(inicioSemana);
+        data.setDate(inicioSemana.getDate() + i);
 
-  // Converte para horário de São Paulo
-  const dataBR = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const label = dataBR.toLocaleDateString('pt-BR');
+        // Converte para horário de São Paulo
+        const dataBR = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const label = dataBR.toLocaleDateString('pt-BR');
 
-  diasSemana.push(label);
-}
+        diasSemana.push(label);
+      }
 
 
       labels = diasSemana;
@@ -743,17 +669,17 @@ for (let i = 0; i < 7; i++) {
     const horas = Math.floor(totalM / 60);
     const minutos = totalM % 60;
     // Total focado
-document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}m`;
+    document.getElementById('total-focus').textContent = `${horas > 0 ? horas + 'h ' : ''}${minutos}m`;
 
-const hoje = new Date();
-// Novo cálculo de média por dia do mês
-const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-const diasDoMes = Math.ceil((hoje - primeiroDia) / (1000 * 60 * 60 * 24)) + 1;
-const mediaMinutos = Math.floor(totalM / diasDoMes);
-const mediaHoras = Math.floor(mediaMinutos / 60);
-const mediaRestante = mediaMinutos % 60;
+    const hoje = new Date();
+    // Novo cálculo de média por dia do mês
+    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const diasDoMes = Math.ceil((hoje - primeiroDia) / (1000 * 60 * 60 * 24)) + 1;
+    const mediaMinutos = Math.floor(totalM / diasDoMes);
+    const mediaHoras = Math.floor(mediaMinutos / 60);
+    const mediaRestante = mediaMinutos % 60;
 
-document.getElementById('media-diaria').textContent = `${mediaHoras > 0 ? mediaHoras + 'h ' : ''}${mediaRestante}m`;
+    document.getElementById('media-diaria').textContent = `${mediaHoras > 0 ? mediaHoras + 'h ' : ''}${mediaRestante}m`;
 
 
     document.getElementById('days-active').textContent = diasUnicos.size;
@@ -765,24 +691,24 @@ document.getElementById('media-diaria').textContent = `${mediaHoras > 0 ? mediaH
       })
       .sort((a, b) => a - b);
 
-// Ordena do mais recente para o mais antigo
-diasOrdenados.reverse();
+    // Ordena do mais recente para o mais antigo
+    diasOrdenados.reverse();
 
-for (let i = 0; i < diasOrdenados.length; i++) {
-  const esperado = new Date(hoje);
-  esperado.setDate(hoje.getDate() - i);
+    for (let i = 0; i < diasOrdenados.length; i++) {
+      const esperado = new Date(hoje);
+      esperado.setDate(hoje.getDate() - i);
 
-  const esperadoStr = esperado.toDateString();
-  const atualStr = diasOrdenados[i].toDateString();
+      const esperadoStr = esperado.toDateString();
+      const atualStr = diasOrdenados[i].toDateString();
 
-  if (esperadoStr === atualStr) {
-    streakAtual++;
-  } else {
-    break;
-  }
-}
+      if (esperadoStr === atualStr) {
+        streakAtual++;
+      } else {
+        break;
+      }
+    }
 
-document.getElementById('streak-days').textContent = streakAtual;
+    document.getElementById('streak-days').textContent = streakAtual;
 
   }
 
@@ -879,17 +805,23 @@ document.getElementById('streak-days').textContent = streakAtual;
 
       updateDisplay();
 
-      if (isRunning && remainingTime <= 30 && remainingTime > 0) {
-        if (tickSound && tickSound.paused) {
-          tickSound.loop = true;
-          tickSound.play().catch(err => console.error("Erro no som:", err));
-        }
-      } else {
-        if (tickSound && !tickSound.paused) {
-          tickSound.pause();
-          tickSound.currentTime = 0;
-        }
-      }
+if (isRunning && remainingTime <= 30 && remainingTime > 0) {
+  if (tickSound && tickSound.paused) {
+    tickSound.loop = true;
+    tickSound.play().catch(err => console.error("Erro no som:", err));
+  }
+} else {
+  if (tickSound && !tickSound.paused) {
+    tickSound.pause();
+    tickSound.currentTime = 0;
+  }
+}
+
+// Pare o som imediatamente quando zerar:
+if (remainingTime <= 0 && tickSound) {
+  tickSound.pause();
+  tickSound.currentTime = 0;
+}
 
       if (remainingTime <= 0) {
         clearInterval(timer);
@@ -909,48 +841,61 @@ document.getElementById('streak-days').textContent = streakAtual;
           atualizarProgressoCiclos();
         }
 
-        if (ciclosConcluidos >= metaCiclos) {
-          alert(`🎯 Você concluiu ${metaCiclos} ciclos focando em: ${objetivoAtual}`);
-          isFocusTime = false; // Entra na pausa final
-          objetivoFinalParaSalvar = objetivoAtual;
-          document.getElementById('input-objetivo').value = '';
-          objetivoAtual = '';
-          metaCiclos = 1;
-          ciclosConcluidos = 0;
+if (ciclosConcluidos >= metaCiclos) {
+  alert(`✅ Objetivo concluído!\nVocê completou ${metaCiclos} ciclos focando em: "${objetivoAtual || objetivoFinalParaSalvar}"\nParabéns!`);
 
-          setTimeout(() => {
-            alert(`🧘 Pausa final do objetivo: ${objetivoFinalParaSalvar}`);
-            alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
-            document.getElementById('barra-preenchida').style.width = '0%';
-            document.getElementById('texto-ciclos').textContent = '0/0 ciclos concluídos';
-            document.getElementById('ciclo-progresso').classList.add('hidden');
-            document.getElementById('input-objetivo').value = '';
+  // Resetar para valores padrão do Pomodoro
+  focusInput.value = 25;
+  breakInput.value = 5;
+  inputMeta.value = 1;
+  objetivoInputField.value = '';
+  remainingTime = 25 * 60;
+  tempoTotalAtual = remainingTime;
+  atualizarProgressoCiclos();
+  updateDisplay();
 
-            clearInterval(timer);
-            isRunning = false;
-            remainingTime = parseInt(focusInput.value) * 60;
 
-            if (tickSound) {
-              tickSound.pause();
-              tickSound.currentTime = 0;
-            }
+  isFocusTime = false;
+  objetivoFinalParaSalvar = objetivoAtual;
+  objetivoAtual = '';
+  metaCiclos = 1;
+  ciclosConcluidos = 0;
 
-            updateDisplay();
-            atualizarBotoes('inicio');
-          }, 200);
+  clearInterval(timer);
+  isRunning = false;
 
-          return;
-        } else {
+  if (tickSound) {
+    tickSound.pause();
+    tickSound.currentTime = 0;
+  }
+
+setTimeout(() => {
+  alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
+  resetTimer(); // <-- Isso já faz todo o reset visual e de variáveis
+  atualizarBotoes('inicio');
+}, 200);
+
+  return;
+}
+
+else {
           isFocusTime = !isFocusTime;
+          if (isFocusTime) {
+            remainingTime = parseInt(focusInput.value) * 60;
+            tempoTotalAtual = remainingTime;
+          } else {
+            remainingTime = parseInt(breakInput.value) * 60;
+            tempoTotalAtual = remainingTime;
+          }
           alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
-          startTimer();
-        }
+          runTimer();
 
-        mostrarHistorico();
-        mostrarRanking();
-        renderizarGrafico("semana");
-      }
-    }, 1000);
+          mostrarHistorico();
+          mostrarRanking();
+          renderizarGrafico("semana");
+        }
+        }
+      }, 1000);
   }
 
   function carregarMaisRanking() {
@@ -1193,7 +1138,7 @@ document.getElementById('streak-days').textContent = streakAtual;
       return;
     }
 
-    startTimer();
+    iniciarSessaoPomodoro(); // Troque startTimer() por iniciarSessaoPomodoro()
     atualizarBotoes('focando');
   });
 
@@ -1222,27 +1167,27 @@ document.getElementById('streak-days').textContent = streakAtual;
     }
   }
 
-focusInput.addEventListener('input', () => {
-  let valor = parseInt(focusInput.value);
-  if (valor < 1) valor = 1;
-  if (valor > 180) valor = 180; // Máximo 3 horas
-  focusInput.value = valor;
-  if (!isRunning && isFocusTime) {
-    remainingTime = valor * 60;
-    updateDisplay();
-  }
-});
+  focusInput.addEventListener('input', () => {
+    let valor = parseInt(focusInput.value);
+    if (valor < 1) valor = 1;
+    if (valor > 180) valor = 180; // Máximo 3 horas
+    focusInput.value = valor;
+    if (!isRunning && isFocusTime) {
+      remainingTime = valor * 60;
+      updateDisplay();
+    }
+  });
 
-breakInput.addEventListener('input', () => {
-  let valor = parseInt(breakInput.value);
-  if (valor < 1) valor = 1;
-  if (valor > 60) valor = 60; // Máximo 1 hora
-  breakInput.value = valor;
-  if (!isRunning && !isFocusTime) {
-    remainingTime = valor * 60;
-    updateDisplay();
-  }
-});
+  breakInput.addEventListener('input', () => {
+    let valor = parseInt(breakInput.value);
+    if (valor < 1) valor = 1;
+    if (valor > 60) valor = 60; // Máximo 1 hora
+    breakInput.value = valor;
+    if (!isRunning && !isFocusTime) {
+      remainingTime = valor * 60;
+      updateDisplay();
+    }
+  });
 
 
   if (logoutBtn) {
@@ -1278,25 +1223,26 @@ breakInput.addEventListener('input', () => {
         }
       }
 
-      if (remainingTime <= 0) {
-        clearInterval(timer);
-        isRunning = false;
-        if (tickSound) {
-          tickSound.pause();
-          tickSound.currentTime = 0;
-          tickSound.play().catch(err => console.error("Erro no som final:", err));
-        }
+// ...dentro do evento do botão resume...
+if (remainingTime <= 0) {
+  clearInterval(timer);
+  isRunning = false;
+  if (tickSound) {
+    tickSound.pause();
+    tickSound.currentTime = 0;
+    tickSound.play().catch(err => console.error("Erro no som final:", err));
+  }
 
-        const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-        const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-        salvarSessao(tipoAtual, duracao);
-        isFocusTime = !isFocusTime;
-        alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
-        startTimer();
-        mostrarHistorico();
-        mostrarRanking();
-        renderizarGrafico("semana");
-      }
+  const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
+  const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
+  salvarSessao(tipoAtual, duracao);
+  isFocusTime = !isFocusTime;
+  alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
+  runTimer(); // <-- CORRETO!
+  mostrarHistorico();
+  mostrarRanking();
+  renderizarGrafico("semana");
+}
     }, 1000);
 
     atualizarBotoes('focando');
