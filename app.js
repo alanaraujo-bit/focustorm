@@ -36,6 +36,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const objetivoInputField = document.getElementById('input-objetivo');
   const startBtn = document.getElementById('start-btn');
 
+  function atualizarObjetivoAtual() {
+    const objetivoDiv = document.getElementById('objetivo-atual');
+    if (objetivoAtual) {
+      objetivoDiv.textContent = `🎯 Objetivo em foco: ${objetivoAtual}`;
+    } else {
+      objetivoDiv.textContent = '';
+    }
+  }
+
   function validarCamposPomodoro() {
     const objetivo = objetivoInputField.value.trim();
     const foco = parseInt(focusInput.value);
@@ -156,6 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("section-historico").classList.add("hidden");
     document.getElementById("section-ranking").classList.add("hidden");
 
+    if (document.getElementById('objetivo-config')) {
+      document.getElementById('objetivo-config').classList.add('hidden');
+    }
+
     document.getElementById('login-btn').addEventListener('click', async () => {
       const email = document.getElementById('login-name').value;
       const senha = document.getElementById('login-password').value;
@@ -205,54 +218,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function verificarLogin() {
-    const userResponse = await supabase.auth.getUser();
-    console.log('Resposta de autenticação:', userResponse);
-    if (!userResponse || !userResponse.data || !userResponse.data.user) {
-      console.log('Usuário não autenticado, mostrando tela de login.');
-      mostrarTelaLogin();
-      return;
-    }
-    const user = userResponse.data.user;
-    localStorage.setItem('focustorm_user_id', user.id);
-    console.log('User ID salvo no localStorage:', user.id);
-
-    await registrarNomeUsuario();
-
-    const nomeUsuario = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário";
-    const saudacao = gerarSaudacao();
-
-    document.getElementById('usuario-logado').innerHTML = `
-      ${saudacao}, <strong>${nomeUsuario}</strong>
-      <button id="perfil-icon" title="Ver meu perfil" class="btn-perfil-clean">
-        <i class="fas fa-user"></i> Perfil
-      </button>
-      <br>
-      <span style="font-size: 0.9rem; color: #aaa;">O que vamos focar hoje?</span>
-    `;
-
-    document.getElementById('perfil-icon').addEventListener('click', () => {
-      const userId = localStorage.getItem('focustorm_user_id');
-      console.log('User ID recuperado para perfil:', userId);
-      if (!userId || userId === "undefined") {
-        alert("ID do usuário não encontrado. Faça login novamente.");
+    try {
+      const userResponse = await supabase.auth.getUser();
+      console.log('Resposta de autenticação:', userResponse);
+      if (!userResponse || !userResponse.data || !userResponse.data.user) {
+        console.log('Usuário não autenticado, mostrando tela de login.');
+        mostrarTelaLogin();
         return;
       }
-      window.location.href = `Perfil/perfil.html?id=${userId}`;
-    });
+      const user = userResponse.data.user;
+      localStorage.setItem('focustorm_user_id', user.id);
+      console.log('User ID salvo no localStorage:', user.id);
 
-    authContainer.classList.add("hidden");
-    document.getElementById("menu-topo").classList.remove("hidden");
-    document.getElementById("section-pomodoro").classList.remove("hidden");
-    document.getElementById("section-historico").classList.add("hidden");
-    document.getElementById("section-ranking").classList.add("hidden");
+      await registrarNomeUsuario();
 
-    mostrarHistorico();
-    mostrarRanking();
-    renderizarGrafico('semana');
-    resetTimer();
-    atualizarResumo();
+      const nomeUsuario = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário";
+      const saudacao = gerarSaudacao();
 
-    document.body.classList.add("ready");
+      if (document.getElementById('usuario-logado')) {
+        document.getElementById('usuario-logado').innerHTML = `
+          ${saudacao}, <strong>${nomeUsuario}</strong>
+          <button id="perfil-icon" title="Ver meu perfil" class="btn-perfil-clean">
+            <i class="fas fa-user"></i> Perfil
+          </button>
+          <br>
+          <span style="font-size: 0.9rem; color: #aaa;">O que vamos focar hoje?</span>
+        `;
+
+        document.getElementById('perfil-icon').addEventListener('click', () => {
+          const userId = localStorage.getItem('focustorm_user_id');
+          console.log('User ID recuperado para perfil:', userId);
+          if (!userId || userId === "undefined") {
+            alert("ID do usuário não encontrado. Faça login novamente.");
+            return;
+          }
+          window.location.href = `Perfil/perfil.html?id=${userId}`;
+        });
+      }
+
+      if (authContainer) authContainer.classList.add("hidden");
+      if (document.getElementById("menu-topo")) document.getElementById("menu-topo").classList.remove("hidden");
+      if (document.getElementById("section-pomodoro")) document.getElementById("section-pomodoro").classList.remove("hidden");
+      if (document.getElementById("section-historico")) document.getElementById("section-historico").classList.add("hidden");
+      if (document.getElementById("section-ranking")) document.getElementById("section-ranking").classList.add("hidden");
+
+      if (document.getElementById('objetivo-config')) {
+        document.getElementById('objetivo-config').classList.remove('hidden');
+      }
+
+      mostrarHistorico();
+      mostrarRanking();
+      renderizarGrafico('semana');
+      resetTimer();
+      atualizarResumo();
+
+      document.body.classList.add("ready");
+    } catch (e) {
+      console.error('Erro inesperado na verificação de login:', e);
+      mostrarTelaLogin();
+    }
   }
 
   function formatTime(seconds) {
@@ -316,8 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert("⚠️ O cronômetro já está em execução.");
       return;
     }
-
-
+    document.getElementById('objetivo-config').classList.add('hidden');
     let objetivoInput = document.getElementById('input-objetivo').value.trim();
     objetivoInput = objetivoInput.replace(/[<>]/g, '');
 
@@ -333,7 +356,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    objetivoAtual = objetivoInput;
+    objetivoAtual = objetivoInput; // Defina aqui
+    atualizarObjetivoAtual();      // Chame aqui
     metaCiclos = Math.min(Math.max(metaInput, 1), 10);
     ciclosConcluidos = 0;
     objetivoFinalParaSalvar = objetivoAtual;
@@ -371,13 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resetTimer() {
+    document.getElementById('objetivo-config').classList.remove('hidden');
     clearInterval(timer);
     isRunning = false;
     isFocusTime = true;
     remainingTime = parseInt(focusInput.value) * 60;
 
     objetivoAtual = '';
-    objetivoFinalParaSalvar = '';
+    atualizarObjetivoAtual(); // Limpa o texto
     metaCiclos = 1;
     ciclosConcluidos = 0;
 
@@ -794,42 +819,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  let tickSound = null;
+
   function runTimer() {
-    horaInicioReal = Date.now() - (tempoTotalAtual - remainingTime) * 1000;
-    const tickSound = document.getElementById('tick-sound');
-
+    clearInterval(timer); // Sempre limpa antes de criar novo intervalo!
     timer = setInterval(() => {
-      const agora = Date.now();
-      const decorrido = Math.floor((agora - horaInicioReal) / 1000);
-      remainingTime = tempoTotalAtual - decorrido;
-
+      console.log('Timer rodando, remainingTime:', remainingTime, 'isFocusTime:', 'isFocusTime', isFocusTime, 'IsRunning:', isRunning);
+      remainingTime--;
       updateDisplay();
 
-if (isRunning && remainingTime <= 30 && remainingTime > 0) {
-  if (tickSound && tickSound.paused) {
-    tickSound.loop = true;
-    tickSound.play().catch(err => console.error("Erro no som:", err));
-  }
-} else {
-  if (tickSound && !tickSound.paused) {
-    tickSound.pause();
-    tickSound.currentTime = 0;
-  }
-}
-
-// Pare o som imediatamente quando zerar:
-if (remainingTime <= 0 && tickSound) {
-  tickSound.pause();
-  tickSound.currentTime = 0;
-}
+      if (remainingTime === 30) {
+        if (tickSound) {
+          tickSound.currentTime = 0;
+          tickSound.play().catch(() => { });
+        }
+      }
 
       if (remainingTime <= 0) {
         clearInterval(timer);
         isRunning = false;
+
         if (tickSound) {
           tickSound.pause();
           tickSound.currentTime = 0;
-          tickSound.play().catch(err => console.error("Erro no som final:", err));
         }
 
         const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
@@ -841,44 +853,39 @@ if (remainingTime <= 0 && tickSound) {
           atualizarProgressoCiclos();
         }
 
-if (ciclosConcluidos >= metaCiclos) {
-  alert(`✅ Objetivo concluído!\nVocê completou ${metaCiclos} ciclos focando em: "${objetivoAtual || objetivoFinalParaSalvar}"\nParabéns!`);
+        if (ciclosConcluidos >= metaCiclos) {
+          alert(`✅ Objetivo concluído!\nVocê completou ${metaCiclos} ciclos focando em: "${objetivoAtual || objetivoFinalParaSalvar}"\nParabéns!`);
+          focusInput.value = 25;
+          breakInput.value = 5;
+          inputMeta.value = 1;
+          objetivoInputField.value = '';
+          remainingTime = 25 * 60;
+          tempoTotalAtual = remainingTime;
+          atualizarProgressoCiclos();
+          updateDisplay();
 
-  // Resetar para valores padrão do Pomodoro
-  focusInput.value = 25;
-  breakInput.value = 5;
-  inputMeta.value = 1;
-  objetivoInputField.value = '';
-  remainingTime = 25 * 60;
-  tempoTotalAtual = remainingTime;
-  atualizarProgressoCiclos();
-  updateDisplay();
+          isFocusTime = false;
+          objetivoFinalParaSalvar = objetivoAtual;
+          objetivoAtual = '';
+          metaCiclos = 1;
+          ciclosConcluidos = 0;
 
+          clearInterval(timer);
+          isRunning = false;
 
-  isFocusTime = false;
-  objetivoFinalParaSalvar = objetivoAtual;
-  objetivoAtual = '';
-  metaCiclos = 1;
-  ciclosConcluidos = 0;
+          if (tickSound) {
+            tickSound.pause();
+            tickSound.currentTime = 0;
+          }
 
-  clearInterval(timer);
-  isRunning = false;
+          setTimeout(() => {
+            alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
+            resetTimer();
+            atualizarBotoes('inicio');
+          }, 200);
 
-  if (tickSound) {
-    tickSound.pause();
-    tickSound.currentTime = 0;
-  }
-
-setTimeout(() => {
-  alert("✨ Agora você pode definir um novo objetivo para continuar focando!");
-  resetTimer(); // <-- Isso já faz todo o reset visual e de variáveis
-  atualizarBotoes('inicio');
-}, 200);
-
-  return;
-}
-
-else {
+          return;
+        } else {
           isFocusTime = !isFocusTime;
           if (isFocusTime) {
             remainingTime = parseInt(focusInput.value) * 60;
@@ -888,15 +895,19 @@ else {
             tempoTotalAtual = remainingTime;
           }
           alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
+          isRunning = true;
+          clearInterval(timer); // <-- Limpa antes de reiniciar!
           runTimer();
 
           mostrarHistorico();
           mostrarRanking();
           renderizarGrafico("semana");
         }
-        }
-      }, 1000);
+      }
+    }, 1000);
   }
+
+  console.log('Alternando. isFocusTime:', isFocusTime, 'ciclosConcluidos:', ciclosConcluidos, 'metaCiclos:', metaCiclos);
 
   function carregarMaisRanking() {
     const inicio = paginaRanking * tamanhoPagina;
@@ -1201,50 +1212,7 @@ else {
   if (resumeBtn) resumeBtn.addEventListener('click', () => {
     isRunning = true;
     horaInicioReal = Date.now() - (tempoTotalAtual - remainingTime) * 1000;
-
-    const tickSound = document.getElementById('tick-sound');
-
-    timer = setInterval(() => {
-      const agora = Date.now();
-      const decorrido = Math.floor((agora - horaInicioReal) / 1000);
-      remainingTime = tempoTotalAtual - decorrido;
-
-      updateDisplay();
-
-      if (isRunning && remainingTime <= 30 && remainingTime > 0) {
-        if (tickSound && tickSound.paused) {
-          tickSound.loop = true;
-          tickSound.play().catch(err => console.error("Erro no som:", err));
-        }
-      } else {
-        if (tickSound && !tickSound.paused) {
-          tickSound.pause();
-          tickSound.currentTime = 0;
-        }
-      }
-
-// ...dentro do evento do botão resume...
-if (remainingTime <= 0) {
-  clearInterval(timer);
-  isRunning = false;
-  if (tickSound) {
-    tickSound.pause();
-    tickSound.currentTime = 0;
-    tickSound.play().catch(err => console.error("Erro no som final:", err));
-  }
-
-  const tipoAtual = isFocusTime ? 'Foco' : 'Pausa';
-  const duracao = isFocusTime ? parseInt(focusInput.value) : parseInt(breakInput.value);
-  salvarSessao(tipoAtual, duracao);
-  isFocusTime = !isFocusTime;
-  alert(isFocusTime ? "Hora de focar!" : "Hora de descansar!");
-  runTimer(); // <-- CORRETO!
-  mostrarHistorico();
-  mostrarRanking();
-  renderizarGrafico("semana");
-}
-    }, 1000);
-
+    runTimer(); // Só isso!
     atualizarBotoes('focando');
   });
 
@@ -1430,5 +1398,29 @@ if (remainingTime <= 0) {
     resetBtn.classList.toggle("hidden", estado === 'inicio');
   }
 
-  verificarLogin();
+  // Remova a chamada direta de mostrarTelaLogin() aqui
+  // mostrarTelaLogin();
+  // Garantir que o elemento existe antes de acessar
+  const pomodoroConfig = document.getElementById('pomodoro-config');
+  if (pomodoroConfig) {
+    pomodoroConfig.style.display = 'none';
+  } else {
+    console.error('Elemento #pomodoro-config não encontrado!');
+  }
+  // Chamar verificarLogin apenas se todos os elementos essenciais existem
+  if (
+    authContainer &&
+    timerDisplay &&
+    focusInput &&
+    breakInput &&
+    document.getElementById('menu-topo') &&
+    document.getElementById('section-pomodoro') &&
+    document.getElementById('section-historico') &&
+    document.getElementById('section-ranking')
+  ) {
+    verificarLogin();
+  } else {
+    console.error('Algum elemento essencial do DOM não foi encontrado. Verifique o index.html.');
+    if (authContainer) mostrarTelaLogin();
+  }
 });

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FocuStorm</title>
 
   <!-- CSS do projeto -->
@@ -12,11 +13,9 @@
   <link rel="icon" type="image/png" href="assets/raio-icon.png" />
 
   <!-- Font Awesome (ícones) -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
+
 <body>
   <audio id="tick-sound" src="/assets/tick.mp3" preload="auto"></audio>
 
@@ -30,24 +29,22 @@
     <button class="nav-btn" data-section="ranking">Ranking</button>
   </nav>
 
-  <div id="objetivo-atual" class="objetivo-atual"></div>
-  
   <!-- SEÇÃO: Pomodoro -->
-<div id="objetivo-config" class="objetivo-config">
-  <div class="input-wrapper">
-    <label for="input-objetivo">
-      <i class="fas fa-bullseye"></i> Objetivo
-    </label>
-    <input type="text" id="input-objetivo" placeholder="Ex: Estudar para a faculdade" />
-  </div>
+  <div id="objetivo-config" class="objetivo-config">
+    <div class="input-wrapper">
+      <label for="input-objetivo">
+        <i class="fas fa-bullseye"></i> Objetivo
+      </label>
+      <input type="text" id="input-objetivo" placeholder="Ex: Estudar para a faculdade" />
+    </div>
 
-  <div class="input-wrapper">
-    <label for="input-meta-ciclos">
-      <i class="fas fa-sync-alt"></i> Ciclos
-    </label>
-    <input type="number" id="input-meta-ciclos" min="1" value="1" />
+    <div class="input-wrapper">
+      <label for="input-meta-ciclos">
+        <i class="fas fa-sync-alt"></i> Ciclos
+      </label>
+      <input type="number" id="input-meta-ciclos" min="1" value="1" />
+    </div>
   </div>
-</div>
 
 
   <section id="section-pomodoro" class="container hidden">
@@ -56,20 +53,22 @@
       <button id="logout-btn">Sair</button>
     </div>
     <h1>FocuStorm</h1>
-<div class="timer-settings">
-  <div class="input-wrapper">
-    <label for="focus-time">
-      <i class="fas fa-hourglass-start"></i> Foco (min)
-    </label>
-    <input type="number" id="focus-time" value="25" min="1" />
-  </div>
-  <div class="input-wrapper">
-    <label for="break-time">
-      <i class="fas fa-coffee"></i> Pausa (min)
-    </label>
-    <input type="number" id="break-time" value="5" min="1" />
-  </div>
-</div>
+    <div class="timer-settings">
+      <div class="input-wrapper">
+        <label for="focus-time">
+          <i class="fas fa-hourglass-start"></i> Foco (min)
+        </label>
+        <input type="number" id="focus-time" value="25" min="1" />
+      </div>
+      <div class="input-wrapper">
+        <label for="break-time">
+          <i class="fas fa-coffee"></i> Pausa (min)
+        </label>
+        <input type="number" id="break-time" value="5" min="1" />
+      </div>
+    </div>
+
+    <div id="objetivo-atual" class="objetivo-atual"></div>
 
     <div class="circle-container">
       <svg class="progress-ring" width="160" height="160">
@@ -80,9 +79,10 @@
     </div>
 
     <div id="ciclo-progresso" class="hidden" style="margin-top: 15px; text-align: center;">
-  <div id="bolinhas-ciclos" style="display: flex; justify-content: center; gap: 10px;"></div>
-  <div id="texto-ciclos" style="margin-top: 5px; font-size: 0.9rem; color: #ccc;"></div>
-</div>
+      <div id="bolinhas-ciclos" style="display: flex; justify-content: center; gap: 10px;"></div>
+      <div id="texto-ciclos" style="margin-top: 5px; font-size: 0.9rem; color: #ccc;"></div>
+    </div>
+
 
     <div class="timer-buttons">
       <button id="start-btn">Iniciar</button>
@@ -107,10 +107,10 @@
           <strong id="total-focus">0</strong>
           <span>Horas focadas</span>
         </div>
-<div class="card">
-  <strong id="media-diaria">0h</strong>
-  <span>Média diária</span>
-</div>
+        <div class="card">
+          <strong id="media-diaria">0h</strong>
+          <span>Média diária</span>
+        </div>
 
         <div class="card">
           <strong id="streak-days">0</strong>
@@ -161,4 +161,5 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js" defer></script>
 </body>
+
 </html>

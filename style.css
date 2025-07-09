@@ -557,7 +557,8 @@ h1 {
   stroke: #00ffc3;
   stroke-width: 10;
   stroke-linecap: round;
-  stroke-dasharray: 440; /* 2 * π * 70 */
+  stroke-dasharray: 440;
+  /* 2 * π * 70 */
   stroke-dashoffset: 440;
   transition: stroke-dashoffset 1s linear;
 }
@@ -588,7 +589,7 @@ h1 {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 #start-btn {
@@ -600,12 +601,14 @@ h1 {
   background-color: #16a34a;
 }
 
-#pause-btn, #resume-btn {
+#pause-btn,
+#resume-btn {
   background-color: #facc15;
   color: #333;
 }
 
-#pause-btn:hover, #resume-btn:hover {
+#pause-btn:hover,
+#resume-btn:hover {
   background-color: #eab308;
 }
 
@@ -662,7 +665,8 @@ h1 {
     gap: 0.5rem;
     margin: 1rem auto;
     width: 100%;
-    max-width: 300px; /* Centraliza e limita a largura */
+    max-width: 300px;
+    /* Centraliza e limita a largura */
   }
 
   nav.menu-topo .nav-btn {
@@ -795,6 +799,7 @@ h1 {
 .auth-container h2 {
   font-size: 1.5rem;
 }
+
 #card-total-filtrado {
   display: flex;
   flex-direction: column;
@@ -803,6 +808,7 @@ h1 {
   margin: 1.5rem auto 0;
   text-align: center;
 }
+
 .voltar {
   display: block;
   margin: 1rem;
@@ -810,9 +816,11 @@ h1 {
   font-weight: bold;
   text-decoration: none;
 }
+
 .voltar:hover {
   text-decoration: underline;
 }
+
 .avatar {
   width: 70px;
   height: 70px;
@@ -825,12 +833,14 @@ h1 {
   font-size: 2rem;
   font-weight: bold;
   margin: 1rem auto 0.5rem;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }
+
 .loading {
   color: #ccc;
   font-style: italic;
 }
+
 .btn-perfil {
   background-color: transparent;
   border: 2px solid #00ffc3;
@@ -849,6 +859,7 @@ h1 {
   transform: scale(1.1);
   box-shadow: 0 0 8px #00ffc3aa;
 }
+
 .btn-perfil-clean {
   background: linear-gradient(135deg, #00ffc3 0%, #00d9ff 100%);
   color: #0a0a0a;
@@ -871,6 +882,7 @@ h1 {
   box-shadow: 0 0 12px #00ffc399;
   transform: scale(1.05);
 }
+
 .objetivo-config {
   display: flex;
   gap: 1rem;
@@ -911,6 +923,7 @@ h1 {
 .input-wrapper input:focus {
   box-shadow: 0 0 0 2px #00ffc3;
 }
+
 .timer-settings {
   display: flex;
   gap: 1rem;
@@ -951,6 +964,7 @@ h1 {
 .timer-settings .input-wrapper input:focus {
   box-shadow: 0 0 0 2px #00ffc3;
 }
+
 .ciclo-progresso {
   margin-top: 1rem;
   text-align: center;
@@ -975,6 +989,7 @@ h1 {
   background-color: #00ffc3;
   transition: width 0.4s ease;
 }
+
 .ciclo-progresso {
   margin: 1.5rem auto 0.5rem;
   text-align: center;
@@ -999,8 +1014,17 @@ h1 {
   width: 0%;
   transition: width 0.4s ease;
 }
+
 #start-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   filter: grayscale(60%);
+}
+
+.objetivo-atual {
+  color: #00ffc3;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  text-align: center;
+  min-height: 24px;
 }
